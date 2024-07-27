@@ -51,6 +51,12 @@ function setCP()
 	mysql)
 	    cp="../lib/*"
 	    ;;
+	oceanbase)
+	    cp="../lib/*"
+	    ;;
+	tidb)
+	    cp="../lib/*"
+	    ;;
     esac
     myCP="./:../BenchmarkSQL.jar:${cp}"
     export myCP
@@ -62,7 +68,7 @@ function setCP()
 # ----
 db=$(getProp db)
 case "${db}" in
-    oracle|postgres|firebird|mariadb|transact-sql|babelfish|mysql)
+    oracle|postgres|firebird|mariadb|transact-sql|babelfish|mysql|oceanbase)
 	;;
     "")	echo "ERROR: missing db= config option in ${PROPS}" >&2
 	exit 1

@@ -209,6 +209,10 @@ public class jTPCC {
       dbType = jTPCCConfig.DB_BABELFISH;
     else if (iDBType.equals("mysql"))
       dbType = jTPCCConfig.DB_MYSQL;
+	else if (iDBType.equals("oceanbase"))
+	  dbType = jTPCCConfig.DB_OCEANBASE;
+	else if (iDBType.equals("tidb"))
+	  dbType = jTPCCConfig.DB_TiDB;
     else {
       log.error("Unknown database type '{}'", iDBType);
       return;

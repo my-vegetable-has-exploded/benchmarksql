@@ -320,7 +320,7 @@ public class AppGeneric extends jTPCCApplication {
             + "                 AND ol_o_id < d_next_o_id "
             + "                WHERE d_w_id = ? AND d_id = ? "
             + "        ) "
-            + "    )");
+            + "    )AS L");
         break;
     }
 
