@@ -68,7 +68,7 @@ function setCP()
 # ----
 db=$(getProp db)
 case "${db}" in
-    oracle|postgres|firebird|mariadb|transact-sql|babelfish|mysql|oceanbase)
+    oracle|postgres|firebird|mariadb|transact-sql|babelfish|mysql|oceanbase|tidb)
 	;;
     "")	echo "ERROR: missing db= config option in ${PROPS}" >&2
 	exit 1
