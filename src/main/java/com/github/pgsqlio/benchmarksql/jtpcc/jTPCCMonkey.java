@@ -318,11 +318,12 @@ public class jTPCCMonkey {
          * Calculate keying time according to 5.2.5.4, then apply our non-standard multiplier that
          * allows us to drive a higher rate of transactions without scaling to more warehouses.
          */
-        double r = randomDouble();
-        if (r < 0.000045)
-          key_time = key_mean * 10.0;
-        else
-          key_time = -Math.log(r) * key_mean;
+        // double r = randomDouble();
+        // if (r < 0.000045)
+        //   key_time = key_mean * 10.0;
+        // else
+        //   key_time = -Math.log(r) * key_mean;
+		key_time = key_mean;
         think_time *= jTPCC.thinkTimeMultiplier;
         key_time *= jTPCC.keyingTimeMultiplier;
 
