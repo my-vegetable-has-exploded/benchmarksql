@@ -24,5 +24,5 @@ public interface jTPCCConfig {
   public final static int configWhseCount = 10;
   public final static int configItemCount = 100000; // tpc-c std = 100,000
   public final static int configDistPerWhse = 10; // tpc-c std = 10
-  public final static int configCustPerDist = 3000; // tpc-c std = 3,000
+  public final static int configCustPerDist = 300; // tpc-c std = 3,000
 }

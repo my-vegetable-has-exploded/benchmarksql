@@ -1,5 +1,6 @@
 package com.github.pgsqlio.benchmarksql.jtpcc;
 
+import java.util.ArrayList;
 import java.util.Random;
 
 import org.apache.logging.log4j.LogManager;
@@ -29,6 +30,8 @@ public class jTPCCScheduler implements Runnable {
 
   private long current_trans_count = 0;
   private long current_neword_count = 0;
+  private long fault_min = 6;
+  private boolean fault_injected = false;
 
   public jTPCCScheduler(jTPCC gdata) {
     this.gdata = gdata;
@@ -108,6 +111,17 @@ public class jTPCCScheduler implements Runnable {
             case jTPCCTData.TT_NEW_ORDER:
               current_trans_count++;
               current_neword_count++;
+			  // inject fault at fault_min
+			  if (!fault_injected && tdata.trans_due >= fault_min*60000 + start_ms) {
+			    // log.info("Scheduler, inject fault at {}", new java.sql.Timestamp(now));
+				// mutate the tdata to add fault
+				if (tdata.trans_type == jTPCCTData.TT_NEW_ORDER) {
+				  fault_injected = true;
+				  tdata.new_order.faults[0] = new ArrayList<>();
+				  tdata.new_order.faults[0].add(0);
+				}	
+			  }
+
               break;
             case jTPCCTData.TT_PAYMENT:
             case jTPCCTData.TT_ORDER_STATUS:

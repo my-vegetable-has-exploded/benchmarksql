@@ -13,6 +13,8 @@ import java.util.Vector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.github.pgsqlio.benchmarksql.chaos.ChaosFault;
+import com.github.pgsqlio.benchmarksql.chaos.ChaosInjecter;
 import com.github.pgsqlio.benchmarksql.jtpcc.jTPCC;
 import com.github.pgsqlio.benchmarksql.jtpcc.jTPCCApplication;
 import com.github.pgsqlio.benchmarksql.jtpcc.jTPCCConfig;
@@ -364,6 +366,15 @@ public class AppGeneric extends jTPCCApplication {
     }
   }
 
+  public void faultInject(jTPCCTData.NewOrderData newOrder, int point){
+	if (newOrder.faults[point] != null) {
+		ChaosInjecter chaosInjecter = ChaosInjecter.getInstance();
+		for (Integer fault : newOrder.faults[point]) {
+			chaosInjecter.inject(fault);
+		}
+	}
+  }
+
   public void executeNewOrder(jTPCCTData.NewOrderData newOrder, boolean trans_rbk)
       throws Exception {
     PreparedStatement stmt;
@@ -433,6 +444,8 @@ public class AppGeneric extends jTPCCApplication {
         stmt.setInt(2, newOrder.d_id);
       }
       rs = stmt.executeQuery();
+	  // fault injection point 1
+	  faultInject(newOrder, 0);
       if (!rs.next()) {
         rs.close();
         throw new SQLException(
@@ -450,6 +463,8 @@ public class AppGeneric extends jTPCCApplication {
       stmt.setInt(2, newOrder.d_id);
       stmt.setInt(3, newOrder.c_id);
       rs = stmt.executeQuery();
+	  // fault injection point 2
+	  faultInject(newOrder, 1);
       if (!rs.next()) {
         rs.close();
         throw new SQLException("Warehouse or Customer for" + " W_ID=" + newOrder.w_id + " D_ID="
@@ -467,6 +482,8 @@ public class AppGeneric extends jTPCCApplication {
       stmt.setInt(1, newOrder.w_id);
       stmt.setInt(2, newOrder.d_id);
       stmt.executeUpdate();
+	  // fault injection point 3
+	  faultInject(newOrder, 2);
 
       // Insert the ORDER row
       last_stmt = "stmtNewOrderInsertOrder";
@@ -479,6 +496,8 @@ public class AppGeneric extends jTPCCApplication {
       stmt.setInt(6, ol_cnt);
       stmt.setInt(7, o_all_local);
       stmt.executeUpdate();
+	  // fault injection point 4
+	  faultInject(newOrder, 3);
 
       // Insert the NEW_ORDER row
       last_stmt = "stmtNewOrderInsertNewOrder";
@@ -487,6 +506,8 @@ public class AppGeneric extends jTPCCApplication {
       stmt.setInt(2, newOrder.d_id);
       stmt.setInt(3, newOrder.w_id);
       stmt.executeUpdate();
+	  // fault injection point 5
+	  faultInject(newOrder, 4);
 
       // Per ORDER_LINE
       insertOrderLineBatch = stmtNewOrderInsertOrderLine;
@@ -629,10 +650,14 @@ public class AppGeneric extends jTPCCApplication {
       // All done ... execute the batches.
       last_stmt = "updateStockBatch.executeBatch";
       updateStockBatch.executeBatch();
+	  // fault injection point 6
+	  faultInject(newOrder, 5);
       updateStockBatch.clearBatch();
       last_stmt = "insertOrderLineBatch.executeBatch";
       insertOrderLineBatch.executeBatch();
       insertOrderLineBatch.clearBatch();
+	  // fault injection point 7
+	  faultInject(newOrder, 6);
 
       newOrder.execution_status = new String("Order placed");
       newOrder.total_amount = total_amount;

@@ -405,7 +405,7 @@ public class LoadDataWorker implements Runnable {
       /*
        * Within each DISTRICT there are 3,000 CUSTOMERs.
        */
-      for (int c_id = 1; c_id <= 3000; c_id++) {
+      for (int c_id = 1; c_id <= 300; c_id++) {
         if (writeCSV) {
           fmtCustomer.format(
               "%d,%d,%d,%.4f,%s,%s,%s," + "%.2f,%.2f,%.2f,%d,%d," + "%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
@@ -453,7 +453,7 @@ public class LoadDataWorker implements Runnable {
          */
         if (writeCSV) {
           fmtHistory.format("%d,%d,%d,%d,%d,%d,%s,%.2f,%s\n",
-              (w_id - 1) * 30000 + (d_id - 1) * 3000 + c_id, c_id, d_id, w_id, d_id, w_id,
+              (w_id - 1) * 30000 + (d_id - 1) * 300 + c_id, c_id, d_id, w_id, d_id, w_id,
               new java.sql.Timestamp(System.currentTimeMillis()).toString(), 10.00,
               rnd.getAString_12_24());
         } else {

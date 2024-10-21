@@ -219,7 +219,9 @@ def summary_data(result):
         # ----
         # Percentage of rollback is only relevant for NEW_ORDER
         # ----
-        rbk = result.num_rollbacks(tt) / result.num_trans(tt) * 100
+        rbk = 0.0
+        if result.num_trans(tt) != 0:
+            rbk = result.num_rollbacks(tt) / result.num_trans(tt) * 100
         color_rbk = '#000000'
         if tt == 'NEW_ORDER':
             if rbk < 1.0:

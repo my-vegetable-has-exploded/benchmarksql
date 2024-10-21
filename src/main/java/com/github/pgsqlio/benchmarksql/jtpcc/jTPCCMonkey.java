@@ -354,7 +354,8 @@ public class jTPCCMonkey {
       screen.c_id = rnd.getCustomerID();
 
       // 2.4.1.3 - random [5..15] order lines
-      ol_count = rnd.nextInt(5, 15);
+    //   ol_count = rnd.nextInt(5, 15);
+	  ol_count = 5;
       while (ol_idx < ol_count) {
         // 2.4.1.5 1) - non uniform ol_i_id
         screen.ol_i_id[ol_idx] = rnd.getItemID();

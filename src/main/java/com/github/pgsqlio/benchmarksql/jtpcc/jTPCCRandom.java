@@ -318,7 +318,7 @@ public class jTPCCRandom {
    * Produce a non uniform random Customer ID.
    */
   public int getCustomerID() {
-    return (int) ((((nextLong(0, 1023) | nextLong(1, 3000)) + nURandCC_ID) % 3000) + 1);
+    return (int) ((((nextLong(0, 1023) | nextLong(1, 300)) + nURandCC_ID) % 300) + 1);
   }
 
   /*

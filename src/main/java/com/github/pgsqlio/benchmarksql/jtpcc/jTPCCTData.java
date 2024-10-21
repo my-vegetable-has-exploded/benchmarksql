@@ -1,5 +1,7 @@
 package com.github.pgsqlio.benchmarksql.jtpcc;
 
+import java.util.ArrayList;
+
 /*
  * jTPCCTData - The simulated terminal input/output data.
  */
@@ -71,6 +73,9 @@ public class jTPCCTData {
     public String brand_generic[] = new String[15];
     public double i_price[] = new double[15];
     public double ol_amount[] = new double[15];
+
+	// store fault ids for each fault point
+  	public ArrayList<Integer>[] faults = new ArrayList[15];
   }
 
   public PaymentData PaymentData() {
