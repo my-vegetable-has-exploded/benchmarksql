@@ -30,8 +30,11 @@ public class jTPCCScheduler implements Runnable {
 
   private long current_trans_count = 0;
   private long current_neword_count = 0;
-  private long fault_min = 6;
-  private boolean fault_injected = false;
+
+  private long faultMin = 6;
+  private boolean faultInjected = false;
+  private long faultInjectTime = 0;
+  private long recoveryTime = 0;
 
   public jTPCCScheduler(jTPCC gdata) {
     this.gdata = gdata;
@@ -40,6 +43,22 @@ public class jTPCCScheduler implements Runnable {
     this.random = new Random(System.currentTimeMillis());
     this.avl_lock = new Object();
     this.dummy_result = new jTPCCResult();
+  }
+
+  public void setFaultInjectTime(long faultInjectTime){
+	this.faultInjectTime = faultInjectTime;
+  }
+
+  public long getFaultInjectTime(){
+	return this.faultInjectTime;
+  }
+
+  public void setRecoveryTime(long recoveryTime){
+	this.recoveryTime = recoveryTime;
+  }
+
+  public long getRecoveryTime(){
+	return this.recoveryTime;
   }
 
   public void run() {
@@ -112,11 +131,11 @@ public class jTPCCScheduler implements Runnable {
               current_trans_count++;
               current_neword_count++;
 			  // inject fault at fault_min
-			  if (!fault_injected && tdata.trans_due >= fault_min*60000 + start_ms) {
+			  if (!faultInjected && tdata.trans_due >= faultMin*60000 + start_ms) {
 			    // log.info("Scheduler, inject fault at {}", new java.sql.Timestamp(now));
 				// mutate the tdata to add fault
 				if (tdata.trans_type == jTPCCTData.TT_NEW_ORDER) {
-				  fault_injected = true;
+				  faultInjected = true;
 				  tdata.new_order.faults[0] = new ArrayList<>();
 				  tdata.new_order.faults[0].add(0);
 				}	
@@ -139,7 +158,10 @@ public class jTPCCScheduler implements Runnable {
           break;
 
         case SCHED_SUT_LAUNCH:
-          gdata.systemUnderTest.launchSUTThread(tdata);
+          long lanuchTime = gdata.systemUnderTest.launchSUTThread(tdata);
+		  if (this.faultInjectTime>0 && lanuchTime != 0) {
+			this.recoveryTime = lanuchTime;
+		  }
           break;
 
         case SCHED_BEGIN:

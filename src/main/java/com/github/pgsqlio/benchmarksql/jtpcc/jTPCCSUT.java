@@ -29,19 +29,21 @@ public class jTPCCSUT {
     this.deliveryBgThread.start();
   }
 
-  public void launchSUTThread(jTPCCTData tdata) {
+  public long launchSUTThread(jTPCCTData tdata) {
 
     int t_id = tdata.term_w_id;
     SUTThread sut;
 
+    sut = new SUTThread(t_id);
     try {
-      sut = new SUTThread(t_id);
       sutThreads[t_id] = new Thread(sut);
       sutThreads[t_id].start();
     } catch (Exception ex) {
       log.error(ex.getMessage());
       log.info(ex);
+	  return 0;
     }
+	return sut.getLaunchTime();
   }
 
   public void terminate() {
@@ -89,11 +91,16 @@ public class jTPCCSUT {
     private int t_id;
     private Random random;
     private jTPCCApplication application;
+	private long lanuchTime = 0;
 
     public SUTThread(int t_id) {
       this.t_id = t_id;
       this.random = new Random(System.currentTimeMillis());
     }
+
+	public long getLaunchTime() {
+	  return lanuchTime;
+	}
 
     public void run() {
       jTPCCTData tdata;
@@ -117,6 +124,7 @@ public class jTPCCSUT {
 
         return;
       }
+	  lanuchTime = System.currentTimeMillis();
 
       for (;;) {
         /*
@@ -145,6 +153,9 @@ public class jTPCCSUT {
 
         /* Stamp when the SUT started processing this transaction. */
         tdata.trans_start = System.currentTimeMillis();
+
+		// any fault happened in the previous transaction?
+		boolean faultHappend = false;
 
         /* Process the requested transaction on the database. */
         try {
@@ -185,6 +196,16 @@ public class jTPCCSUT {
           reconnect = true;
         }
 
+		switch (tdata.trans_type) {
+          case jTPCCTData.TT_NEW_ORDER:
+		    faultHappend = tdata.new_order.faultInjectTime > 0;
+		  default: 
+		    ;
+		}
+
+		if (faultHappend) {
+		  jTPCC.scheduler.setFaultInjectTime(tdata.new_order.faultInjectTime);
+		}
         /*
          * Stamp the transaction end time into the terminal data.
          */
@@ -219,6 +240,7 @@ public class jTPCCSUT {
               long now = System.currentTimeMillis();
               jTPCCTData sut_launch_tdata = new jTPCCTData();
               sut_launch_tdata.term_w_id = this.t_id;
+			  // TODO@wy speed up the restart
               jTPCC.scheduler.at(now + 5000, jTPCCScheduler.SCHED_SUT_LAUNCH, sut_launch_tdata);
 
               return;

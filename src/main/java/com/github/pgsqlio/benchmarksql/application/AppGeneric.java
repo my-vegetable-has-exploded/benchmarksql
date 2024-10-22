@@ -369,6 +369,7 @@ public class AppGeneric extends jTPCCApplication {
   public void faultInject(jTPCCTData.NewOrderData newOrder, int point){
 	if (newOrder.faults[point] != null) {
 		ChaosInjecter chaosInjecter = ChaosInjecter.getInstance();
+		newOrder.faultInjectTime=System.currentTimeMillis();	
 		for (Integer fault : newOrder.faults[point]) {
 			chaosInjecter.inject(fault);
 		}

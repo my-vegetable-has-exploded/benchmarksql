@@ -76,6 +76,8 @@ public class jTPCCTData {
 
 	// store fault ids for each fault point
   	public ArrayList<Integer>[] faults = new ArrayList[15];
+	// store fault inject time 
+	public long faultInjectTime = 0;
   }
 
   public PaymentData PaymentData() {
