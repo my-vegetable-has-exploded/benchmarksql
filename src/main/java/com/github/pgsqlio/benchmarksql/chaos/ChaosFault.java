@@ -1,23 +1,19 @@
 package com.github.pgsqlio.benchmarksql.chaos;
 
 public class ChaosFault {
-	public String ip;
-	public int port;
-	public String cmd;
+	public String k8scli;
+	public String file;
 	// recovery time in ms
 	public int duration;
-	
-	public ChaosFault(String ip, int port, String cmd) {
-		this.ip = ip;
-		this.port = port;
-		this.cmd = cmd;
-		this.duration = 0;
-	}
 
-	public ChaosFault(String ip, int port, String cmd, int duration) {
-		this.ip = ip;
-		this.port = port;
-		this.cmd = cmd;
+	public ChaosFault(String k8scli, String file) {
+		this.k8scli = k8scli;
+		this.file = file;
+	}	
+	
+	public ChaosFault(String k8scli, String file, int duration) {
+		this.k8scli = k8scli;
+		this.file = file;
 		this.duration = duration;
-	}
+	}	
 }

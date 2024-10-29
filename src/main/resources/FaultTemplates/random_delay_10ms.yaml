@@ -1,0 +1,10 @@
+template: "delay_pod_network_by_names.yaml"
+# random select a pod
+podname: "$RANDOMPOD"
+namespace: "$NAMESPACE"
+localport: "$SERVERPORT"
+# in milliseconds
+lantency: "10"
+interface: "$IFACE"
+# in milliseconds
+duration: "3000"

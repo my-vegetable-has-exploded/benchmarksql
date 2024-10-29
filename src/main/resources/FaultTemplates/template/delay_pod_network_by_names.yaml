@@ -1,0 +1,23 @@
+apiVersion: chaosblade.io/v1alpha1
+kind: ChaosBlade
+metadata:
+  name: delay-pod-network-by-names
+spec:
+  experiments:
+    - scope: pod
+      target: network
+      action: delay
+      desc: "delay pod network by names"
+      matchers:
+        - name: names
+          value: ["$PODNAME"]
+        - name: namespace
+          value: ["$NAMESPACE"]
+        - name: local-port
+          value: ["$LOCALPORT"]
+        - name: interface
+          value: ["$IFACE"]
+        - name: time
+          value: ["$LATENCY"]
+        - name: offset
+          value: ["1000"]

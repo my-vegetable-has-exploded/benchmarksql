@@ -371,7 +371,7 @@ public class AppGeneric extends jTPCCApplication {
 		ChaosInjecter chaosInjecter = ChaosInjecter.getInstance();
 		newOrder.faultInjectTime=System.currentTimeMillis();	
 		for (Integer fault : newOrder.faults[point]) {
-			chaosInjecter.inject(fault);
+			chaosInjecter.inject();
 		}
 	}
   }

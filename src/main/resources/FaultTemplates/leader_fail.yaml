@@ -1,0 +1,9 @@
+template: "fail_pod_by_name.yaml"
+# select the leader pod
+podname: "$LEADER"
+namespace: "$NAMESPACE"
+duration: "0s"
+faulttime: "10min"
+# in milliseconds
+# faulttxn: "neworder"
+# faultsql: "3"

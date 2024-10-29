@@ -1,67 +1,130 @@
 package com.github.pgsqlio.benchmarksql.chaos;
 
-import java.net.URI;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.InputStream;
+import com.jcraft.jsch.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ChaosClient {
-    public static void main(String[] args) {
-        // example parameters
-        String ip = "133.133.135.51";
-        int port = 9526;
-        String cmd = "create process kill --process hello --signal 9";
-		// String cmd = "create network delay --time 10 --interface ens6f1";
+	static Logger logger = LogManager.getLogger(ChaosInjecter.class);
+	private static final ExecutorService executorService = Executors.newFixedThreadPool(6);
+	// TODO: read from configuration
+	private final String keyFile = System.getProperty("user.home") + "/.ssh/id_rsa";
 
-        // 调用方法发送请求并获取结果
-        ChaosResult result = sendGetRequest(ip, port, cmd);
+	public static void main(String[] args) {
+		// example parameters
+		String k8scli = "wy@133.133.135.56";
+		// get current path
+		String file = System.getProperty("user.dir") + "/src/main/resources/faults/debug.yaml";
+		// System.out.println(file);
 
-        // 输出结果
-        System.out.println(result);
-    }
-
-	public static ChaosResult sendGetRequest(ChaosFault fault) {
-		return sendGetRequest(fault.ip, fault.port, fault.cmd);
+		ChaosClient client = new ChaosClient();
+		client.inject(k8scli, file, 0);
 	}
 
-    public static ChaosResult sendGetRequest(String ip, int port, String cmd) {
-        try {
-			// 对cmd参数进行URL编码
-            String encodedCmd = URLEncoder.encode(cmd, StandardCharsets.UTF_8.toString());
+	public void inject(ChaosFault fault) {
+		inject(fault.k8scli, fault.file, fault.duration);
+	}
 
-            // 构建URL
-            String url = String.format("http://%s:%d/chaosblade?cmd=%s", ip, port, encodedCmd);
+	public void inject(String k8scli, String file, int duration) {
+		String[] parts = k8scli.split("@");
+		final String username = parts[0];
+		final String host = parts[1];
 
-            // 创建HttpClient对象
-            HttpClient client = HttpClient.newHttpClient();
+		// remote file path is under /tmp, and extract file name from file path
+		String remoteFilePath = "/tmp" + file.substring(file.lastIndexOf("/"));
 
-            // 创建HttpRequest对象
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(new URI(url))
-                    .GET()
-                    .build();
+		try {
+			JSch jsch = new JSch();
+			jsch.addIdentity(keyFile);
+			Session session = jsch.getSession(username, host, 22);
 
-            // 发送请求并获取响应
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+			// 设置密码（如果使用密钥文件，可以忽略此步骤）
+			// session.setPassword("your_password");
 
-            // 解析响应内容
-            ObjectMapper objectMapper = new ObjectMapper();
-            JsonNode jsonNode = objectMapper.readTree(response.body());
+			// 设置不检查主机密钥
+			session.setConfig("StrictHostKeyChecking", "no");
 
-            int code = jsonNode.get("code").asInt();
-            boolean success = jsonNode.get("success").asBoolean();
-            String result = jsonNode.has("result") ? jsonNode.get("result").asText() : null;
-            String error = jsonNode.has("error") ? jsonNode.get("error").asText() : null;
+			// 连接到远程服务器
+			session.connect();
 
-            // 返回结果对象
-            return new ChaosResult(code, success, result, error);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new ChaosResult(-1, false, null, e.getMessage());
-        }
-    }
+			// 上传文件
+			ChannelSftp sftpChannel = (ChannelSftp) session.openChannel("sftp");
+			sftpChannel.connect();
+			sftpChannel.put(file, remoteFilePath);
+			sftpChannel.disconnect();
+
+			// 执行 kubectl apply 命令
+			final ChannelExec execChannel = (ChannelExec) session.openChannel("exec");
+			execChannel.setCommand("kubectl apply -f " + remoteFilePath);
+			execChannel.connect();
+			InputStream in = execChannel.getInputStream();
+			byte[] tmp = new byte[1024];
+			while (true) {
+				while (in.available() > 0) {
+					int i = in.read(tmp, 0, 1024);
+					if (i < 0)
+						break;
+					logger.info(new String(tmp, 0, i));
+				}
+				if (execChannel.isClosed()) {
+					if (in.available() > 0)
+						continue;
+					logger.info("Exit status: " + execChannel.getExitStatus());
+					break;
+				}
+				try {
+					Thread.sleep(100);
+				} catch (Exception ee) {
+				}
+			}
+			execChannel.disconnect();
+
+			// 异步执行 kubectl delete 命令
+			executorService.submit(() -> {
+				try {
+					if (duration > 0) {
+						Thread.sleep(duration);
+					}
+
+					// 执行 kubectl delete 命令
+					execChannel.setCommand("kubectl delete -f " + remoteFilePath);
+					execChannel.connect();
+					InputStream deleteIn = execChannel.getInputStream();
+					byte[] deleteTmp = new byte[1024];
+					while (true) {
+						while (deleteIn.available() > 0) {
+							int i = deleteIn.read(deleteTmp, 0, 1024);
+							if (i < 0)
+								break;
+							logger.info(new String(deleteTmp, 0, i));
+						}
+						if (execChannel.isClosed()) {
+							if (deleteIn.available() > 0)
+								continue;
+							logger.info("Exit status: " + execChannel.getExitStatus());
+							break;
+						}
+						try {
+							Thread.sleep(100);
+						} catch (Exception ee) {
+						}
+					}
+					execChannel.disconnect();
+
+					// 断开连接
+					session.disconnect();
+
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			});
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }

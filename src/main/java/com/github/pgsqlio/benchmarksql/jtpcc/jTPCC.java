@@ -83,6 +83,7 @@ public class jTPCC {
   static public jTPCCScheduler scheduler;
   public jTPCCSUT systemUnderTest;
   public jTPCCMonkey monkeys;
+  public SystemConfig sysConfig;
 
   public static String resultDirectory = null;
   public static String osCollectorScript = null;
@@ -127,6 +128,8 @@ public class jTPCC {
     } catch (IOException e) {
       log.error("main, could not load properties file");
     }
+
+	sysConfig = new SystemConfig(ini);
 
     /*
      * Get all the configuration settings
