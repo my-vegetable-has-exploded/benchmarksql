@@ -85,47 +85,65 @@ public class ChaosInjecter {
 
 	private static void replacePlaceholders(Object data, HashMap<String, String> replacements) {
 		if (data instanceof Map) {
-			Map<?, ?> map = (Map<?, ?>) data;
-			for (Map.Entry<?, ?> entry : map.entrySet()) {
-				replacePlaceholders(entry.getValue(), replacements);
+			Map<Object, Object> map = (Map<Object, Object>) data;
+			for (Map.Entry<Object, Object> entry : map.entrySet()) {
+				Object value = entry.getValue();
+				if (value instanceof String) {
+					entry.setValue(getReplacement((String) value, replacements));
+				} else {
+					replacePlaceholders(value, replacements);
+				}
 			}
 		} else if (data instanceof List) {
-			List<?> list = (List<?>) data;
-			for (Object item : list) {
-				replacePlaceholders(item, replacements);
-			}
-		} else if (data instanceof String) {
-			String value = (String) data;
-			if (value.startsWith("$")) {
-				String replacement = replacements.get(value);
-				if (replacement != null) {
-					// TODO: replace the value
-					data = replacement;
+			List<Object> list = (List<Object>) data;
+			for (int i = 0; i < list.size(); i++) {
+				Object item = list.get(i);
+				if (item instanceof String) {
+					list.set(i, getReplacement((String) item, replacements));
+				} else {
+					replacePlaceholders(item, replacements);
 				}
 			}
 		}
 	}
 
+	private static String getReplacement(String value, HashMap<String, String> replacements) {
+		if (value.startsWith("$")) {
+			String replacement1 = replacements.get(value);
+			if (replacement1 != null) {
+				return replacement1;
+			}
+			// map podname to $PODNAME
+			String replacement2 = replacements.get(value.substring(1).toLowerCase());
+			if (replacement2 != null) {
+				return replacement2;
+			}
+		}
+		return value;
+	}
+
 	public HashMap<String, String> computeReplacements(SystemConfig config, ArrayList<String> placeholders) {
-		HashMap<String, String> replacements = new HashMap();
-		for(String placeholder: placeholders) {
-			if(placeholder.equals("$LEADER")) {
+		HashMap<String, String> replacements = new HashMap<String, String>();
+		for (String placeholder : placeholders) {
+			if (placeholder.equals("$LEADER")) {
 				replacements.put("$LEADER", config.leader);
-			} else if(placeholder.equals("$RANDOMPOD")) {
+			} else if (placeholder.equals("$RANDOMPOD")) {
 				int podsSize = config.pods.size();
 				int randomPodIndex = (int) (Math.random() * podsSize);
 				String randomPod = config.pods.get(randomPodIndex);
 				replacements.put("$RANDOMPOD", randomPod);
-			} else if(placeholder.equals("$IFACE")) {
+			} else if (placeholder.equals("$IFACE")) {
 				replacements.put("$IFACE", config.iface);
-			} else if(placeholder.equals("$SERVERPORT")) {
+			} else if (placeholder.equals("$SERVERPORT")) {
 				replacements.put("$SERVERPORT", Integer.toString(config.serverport));
-			}
+			} else if (placeholder.equals("$NAMESPACE")) {
+				replacements.put("$NAMESPACE", config.namespace);
+			} 
 		}
 		return replacements;
 	}
 
-	public ChaosFault initialFault(String faultName) throws Exception {
+	public ChaosFault initialFault(SystemConfig config, String faultName) throws Exception {
 		// read fault description from faultName
 		String faultTemplateFile = templatePath + faultName;
 		// read fault template
@@ -138,7 +156,6 @@ public class ChaosInjecter {
 		ArrayList<String> placeholders = new ArrayList<String>();
 		findPlaceholders(fault, placeholders);
 		// compute replacements
-		SystemConfig config = gdata.sysConfig;
 		HashMap<String, String> replacements = computeReplacements(config, placeholders);
 		// replace placeholders
 		replacePlaceholders(fault, replacements);
@@ -149,7 +166,7 @@ public class ChaosInjecter {
 		// find placeholders
 		ArrayList<String> chaosPlaceholders = new ArrayList<String>();
 		findPlaceholders(chaos, chaosPlaceholders);
-		replacePlaceholders(chaos, fault);	
+		replacePlaceholders(chaos, fault);
 
 		String chaosData = yaml.dump(chaos);
 		String chaosPath = faultPath + faultName;
@@ -159,10 +176,10 @@ public class ChaosInjecter {
 		return new ChaosFault(config.k8scli, chaosPath, duration);
 	}
 
-	public void inject() throws Exception{
+	public void inject() throws Exception {
 		ArrayList<ChaosFault> faults = new ArrayList<ChaosFault>();
 		for (String faultName : gdata.sysConfig.faults) {
-			faults.add(initialFault(faultName));
+			faults.add(initialFault(gdata.sysConfig, faultName));
 		}
 		for (ChaosFault fault : faults) {
 			inject(fault);
@@ -171,6 +188,6 @@ public class ChaosInjecter {
 
 	public void inject(ChaosFault fault) {
 		ChaosClient client = new ChaosClient();
-		client.inject(fault);		
+		client.inject(fault);
 	}
 }
