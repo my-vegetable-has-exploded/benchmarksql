@@ -10,7 +10,6 @@ import java.util.concurrent.Executors;
 
 public class ChaosClient {
 	static Logger logger = LogManager.getLogger(ChaosInjecter.class);
-	private static final ExecutorService executorService = Executors.newFixedThreadPool(6);
 	// TODO: read from configuration
 	private final String keyFile = System.getProperty("user.home") + "/.ssh/id_rsa";
 
@@ -81,7 +80,7 @@ public class ChaosClient {
 			execChannel.disconnect();
 
 			// 异步执行 kubectl delete 命令
-			executorService.submit(() -> {
+			new Thread(() -> {
 				try {
 					if (duration > 0) {
 						Thread.sleep(duration);
@@ -118,7 +117,7 @@ public class ChaosClient {
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-			});
+			}).start();
 
 		} catch (Exception e) {
 			e.printStackTrace();
