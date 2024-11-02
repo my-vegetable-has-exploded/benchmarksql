@@ -15,6 +15,8 @@ public class SystemConfig {
 	public String leader;
 	public int serverport;
 	public ArrayList<String> faults;
+	// in mins
+	public int faultTime;
 
 	private String getProp(Properties p, String pName) {
 		String prop = p.getProperty(pName);
@@ -47,5 +49,6 @@ public class SystemConfig {
 		for (String fault : faultsStr.split(",")){
 			faults.add(fault.strip());
 		}
+		faultTime = Integer.parseInt(getProp(p, "faulttime", "10"));
 	}
 }

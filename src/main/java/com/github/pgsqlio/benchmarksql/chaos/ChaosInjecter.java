@@ -23,6 +23,7 @@ public class ChaosInjecter {
 	private static ChaosInjecter instance;
 	private final String templatePath;
 	private final String faultPath;
+	ChaosClient client = new ChaosClient();
 
 	private ChaosInjecter(jTPCC gdata) {
 		this.gdata = gdata;
@@ -138,7 +139,7 @@ public class ChaosInjecter {
 				replacements.put("$SERVERPORT", Integer.toString(config.serverport));
 			} else if (placeholder.equals("$NAMESPACE")) {
 				replacements.put("$NAMESPACE", config.namespace);
-			} 
+			}
 		}
 		return replacements;
 	}
@@ -187,7 +188,7 @@ public class ChaosInjecter {
 	}
 
 	public void inject(ChaosFault fault) {
-		ChaosClient client = new ChaosClient();
+		logger.info("injecting fault: {}, duration: {}", fault.file, fault.duration);
 		client.inject(fault);
 	}
 }

@@ -42,13 +42,10 @@ public class ChaosClient {
 			jsch.addIdentity(keyFile);
 			Session session = jsch.getSession(username, host, 22);
 
-			// 设置密码（如果使用密钥文件，可以忽略此步骤）
 			// session.setPassword("your_password");
 
-			// 设置不检查主机密钥
 			session.setConfig("StrictHostKeyChecking", "no");
 
-			// 连接到远程服务器
 			session.connect();
 
 			// 上传文件

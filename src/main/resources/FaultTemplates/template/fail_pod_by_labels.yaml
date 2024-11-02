@@ -15,3 +15,6 @@ spec:
         - name: namespace
           value:
             - "$NAMESPACE"
+        - name: evict-count
+          value:
+            - "1"

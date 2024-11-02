@@ -241,7 +241,7 @@ public class jTPCCSUT {
               jTPCCTData sut_launch_tdata = new jTPCCTData();
               sut_launch_tdata.term_w_id = this.t_id;
 			  // TODO@wy speed up the restart
-              jTPCC.scheduler.at(now + 5000, jTPCCScheduler.SCHED_SUT_LAUNCH, sut_launch_tdata);
+              jTPCC.scheduler.at(now + 500, jTPCCScheduler.SCHED_SUT_LAUNCH, sut_launch_tdata);
 
               return;
             }

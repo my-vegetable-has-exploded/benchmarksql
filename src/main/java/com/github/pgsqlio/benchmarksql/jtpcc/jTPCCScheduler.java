@@ -31,7 +31,7 @@ public class jTPCCScheduler implements Runnable {
   private long current_trans_count = 0;
   private long current_neword_count = 0;
 
-  private long faultMin = 6;
+  private long faultMin;
   private boolean faultInjected = false;
   private long faultInjectTime = 0;
   private long recoveryTime = 0;
@@ -43,6 +43,7 @@ public class jTPCCScheduler implements Runnable {
     this.random = new Random(System.currentTimeMillis());
     this.avl_lock = new Object();
     this.dummy_result = new jTPCCResult();
+	this.faultMin = gdata.sysConfig.faultTime;
   }
 
   public void setFaultInjectTime(long faultInjectTime){
@@ -161,6 +162,7 @@ public class jTPCCScheduler implements Runnable {
           long lanuchTime = gdata.systemUnderTest.launchSUTThread(tdata);
 		  if (this.faultInjectTime>0 && lanuchTime != 0) {
 			this.recoveryTime = lanuchTime;
+			log.info("Scheduler, recovery {} in ms", this.recoveryTime - this.faultInjectTime);
 		  }
           break;
 
