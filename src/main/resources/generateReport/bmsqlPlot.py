@@ -37,8 +37,8 @@ class bmsqlPlot:
         # ----
         # The X limits are -rampupMins, runMins
         # ----
-        plt.set_xlim(-int(runinfo['rampupMins']), int(runinfo['runMins']))
-        plt.axvspan(-int(runinfo['rampupMins']), 0,
+        plt.set_xlim(-int(runinfo['rampupMins'])*60, int(runinfo['runMins'])*60)
+        plt.axvspan(-int(runinfo['rampupMins'])*60, 0,
                     facecolor = '0.2', alpha = 0.1)
 
         # ----
@@ -56,7 +56,7 @@ class bmsqlPlot:
         # ----
         interval = 10
         data = numpy.array([[(int(tup[0] / interval) * interval - offset)
-                           / 60, tup[1] * (60 / interval)]
+                            , tup[1]]
                            for tup in result.result_ttype['NEW_ORDER']])
         x = sorted(numpy.unique(data[:,0]))
 
@@ -72,8 +72,8 @@ class bmsqlPlot:
         # Plot the NOPM and add all the decorations
         # ----
         plt.plot(x, y, 'b')
-        plt.set_title("NEW_ORDER Transactions per Minute (tpmC)")
-        plt.set_xlabel("Elapsed Minutes")
+        plt.set_title("NEW_ORDER Transactions per seonds")
+        plt.set_xlabel("Elapsed Seconds")
         plt.set_ylabel("tpmC")
         plt.grid()
 
