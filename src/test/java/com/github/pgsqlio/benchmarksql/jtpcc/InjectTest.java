@@ -6,46 +6,15 @@ import com.github.pgsqlio.benchmarksql.chaos.ChaosFault;
 import com.github.pgsqlio.benchmarksql.chaos.ChaosInjecter;
 
 import static org.junit.jupiter.api.Assertions.*;
-import java.util.Map;
-import java.util.List;
 import java.util.Properties;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.HashMap;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.DumperOptions;
+import java.io.StringWriter;
 
 public class InjectTest {
-
-	class ChaosBlade {
-		private String apiVersion;
-		private String kind;
-		private Map<String, Object> metadata;
-		private Spec spec;
-
-		// getters and setters
-	}
-
-	class Spec {
-		private List<Experiment> experiments;
-
-		// getters and setters
-	}
-
-	class Experiment {
-		private String scope;
-		private String target;
-		private String action;
-		private String desc;
-		private List<Matcher> matchers;
-
-		// getters and setters
-	}
-
-	class Matcher {
-		private String name;
-		private List<String> value;
-
-		// getters and setters
-	}
 
 	@Test
 	public void testInject() {
@@ -61,7 +30,7 @@ public class InjectTest {
 		// faults: "leader_fail.yaml"
 
 		Properties p = new Properties();
-		p.setProperty("k8scli", "root@133.133.135.56");
+		p.setProperty("k8scli", "wy@133.133.135.56");
 		p.setProperty("namespace", "oceanbase");
 		p.setProperty("iface", "ens6f1");
 		p.setProperty("pods", "zone1, zone2, zone3");
@@ -80,11 +49,20 @@ public class InjectTest {
 			// read yaml file
 			InputStream input = new FileInputStream(faultPath);
 			Yaml yaml = new Yaml();
-			ChaosBlade describe = yaml.load(input);
-			assertEquals("zone1", describe.spec.experiments.get(0).matchers.get(0).value.get(0));
-			assertEquals("oceanbase", describe.spec.experiments.get(0).matchers.get(1).value.get(0));
+			HashMap<String, Object> describe = yaml.load(input);
+			StringWriter writer = new StringWriter();
+			DumperOptions options = new DumperOptions();
+			options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK); 
+			options.setPrettyFlow(true); 
+			Yaml yamlDumper = new Yaml(options);
+			yamlDumper.dump(describe, writer);
+			String yamlString = writer.toString();
+
+			String expected = String.format("apiVersion: chaosblade.io/v1alpha1\nkind: ChaosBlade\nmetadata:\n  name: fail-pod-by-labels\nspec:\n  experiments:\n  - scope: pod\n    target: pod\n    action: fail\n    desc: inject fail image to  select pod\n    matchers:\n    - name: labels\n      value:\n      - zone1\n    - name: namespace\n      value:\n      - oceanbase\n    - name: evict-count\n      value:\n      - '1'\n");
+			assertEquals(expected, yamlString);
 
 		} catch (Exception e) {
+			assertTrue(false, e.getMessage());
 			e.printStackTrace();
 		}
 	}

@@ -6,9 +6,11 @@ spec:
   - scope: pod
     target: pod
     action: fail
-    desc: inject fail image to select pod
+    desc: inject fail image to  select pod
     matchers:
     - name: labels
       value: [zone1]
     - name: namespace
       value: [oceanbase]
+    - name: evict-count
+      value: ['1']
