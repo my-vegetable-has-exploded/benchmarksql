@@ -7,7 +7,7 @@ spec:
     - scope: pod
       target: pod
       action: fail
-      desc: "inject fail image to  select pod"
+      desc: "inject fail image to select pod"
       matchers:
         - name: labels
           value:

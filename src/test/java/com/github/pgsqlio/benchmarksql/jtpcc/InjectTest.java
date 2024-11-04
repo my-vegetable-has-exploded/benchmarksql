@@ -58,7 +58,7 @@ public class InjectTest {
 			yamlDumper.dump(describe, writer);
 			String yamlString = writer.toString();
 
-			String expected = String.format("apiVersion: chaosblade.io/v1alpha1\nkind: ChaosBlade\nmetadata:\n  name: fail-pod-by-labels\nspec:\n  experiments:\n  - scope: pod\n    target: pod\n    action: fail\n    desc: inject fail image to  select pod\n    matchers:\n    - name: labels\n      value:\n      - zone1\n    - name: namespace\n      value:\n      - oceanbase\n    - name: evict-count\n      value:\n      - '1'\n");
+			String expected = String.format("apiVersion: chaosblade.io/v1alpha1\nkind: ChaosBlade\nmetadata:\n  name: fail-pod-by-labels\nspec:\n  experiments:\n  - scope: pod\n    target: pod\n    action: fail\n    desc: inject fail image to select pod\n    matchers:\n    - name: labels\n      value:\n      - zone1\n    - name: namespace\n      value:\n      - oceanbase\n    - name: evict-count\n      value:\n      - '1'\n");
 			assertEquals(expected, yamlString);
 
 		} catch (Exception e) {
