@@ -63,7 +63,7 @@ class bmsqlPlot:
         plt.plot(x, txn_stat, 'b')
         plt.set_title("NEW_ORDER Transactions per seonds")
         plt.set_xlabel("Elapsed Seconds")
-        plt.set_ylabel("tpmC")
+        plt.set_ylabel("QPS")
         plt.grid()
 
         buf = io.StringIO()
