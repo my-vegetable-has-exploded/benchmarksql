@@ -135,6 +135,7 @@ def generate_html(result, template, os_metrics):
     data = {
         'ttypes': result.ttypes,
         'runinfo': result.runinfo,
+		'faultinfo': result.faultinfo,
         'summary': summary_data(result),
         'properties': result.properties,
         'mix_warn': False,

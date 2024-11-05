@@ -48,30 +48,19 @@ class bmsqlPlot:
         # ----
         offset = (int(runinfo['rampupMins'])) * 60.0
 
-        # ----
-        # NEW_ORDER transactions per minute. First get the timestamp
-        # and number of transactions from the result data.
-        # The X vector then is the sorted unique timestamps rounded
-        # to an interval.
-        # ----
-        interval = 10
-        data = numpy.array([[(int(tup[0] / interval) * interval - offset)
-                            , tup[1]]
-                           for tup in result.result_ttype['NEW_ORDER']])
-        x = sorted(numpy.unique(data[:,0]))
-
-        # ----
-        # The Y vector is the sums of transactions grouped by X
-        # ----
-        y = []
-        for ts in x:
-            tmp = data[numpy.where(data[:,0] == ts)]
-            y.append(numpy.sum(tmp[:,1]))
+        total_seconds = int(runinfo['rampupMins'])*60 + int(runinfo['runMins'])*60
+        startTS = (int(runinfo['startTS']))
+        txn_stat = [0 for i in range(total_seconds)]
+        x = range(-int(runinfo['rampupMins'])*60, int(runinfo['runMins'])*60, 1)
+        for row in result.txn_trace:
+            end = int(row['end'] - startTS)//1000 
+            if end >=0 and end < total_seconds:
+                txn_stat[end]+=1
 
         # ----
         # Plot the NOPM and add all the decorations
         # ----
-        plt.plot(x, y, 'b')
+        plt.plot(x, txn_stat, 'b')
         plt.set_title("NEW_ORDER Transactions per seonds")
         plt.set_xlabel("Elapsed Seconds")
         plt.set_ylabel("tpmC")

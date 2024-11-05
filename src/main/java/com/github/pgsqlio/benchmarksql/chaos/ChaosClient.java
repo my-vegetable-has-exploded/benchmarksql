@@ -4,9 +4,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.InputStream;
+
+import com.github.pgsqlio.benchmarksql.jtpcc.jTPCC;
 import com.jcraft.jsch.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class ChaosClient {
 	static Logger logger = LogManager.getLogger(ChaosInjecter.class);
@@ -57,6 +57,7 @@ public class ChaosClient {
 			final ChannelExec execChannel = (ChannelExec) session.openChannel("exec");
 			execChannel.setCommand("kubectl apply -f " + remoteFilePath);
 			execChannel.connect();
+			final long startTime = System.currentTimeMillis();
 			InputStream in = execChannel.getInputStream();
 			byte[] tmp = new byte[1024];
 			while (true) {
@@ -89,6 +90,7 @@ public class ChaosClient {
 					// 执行 kubectl delete 命令
 					execChannel.setCommand("kubectl delete -f " + remoteFilePath);
 					execChannel.connect();
+					long endTime = System.currentTimeMillis();
 					InputStream deleteIn = execChannel.getInputStream();
 					byte[] deleteTmp = new byte[1024];
 					while (true) {
@@ -113,7 +115,7 @@ public class ChaosClient {
 
 					// 断开连接
 					session.disconnect();
-
+					jTPCC.csv_fault_write(file+","+startTime+","+endTime+"\n");
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

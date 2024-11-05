@@ -3,6 +3,7 @@ import csv
 import math
 import json
 import re
+import datetime
 
 class bmsqlResult:
     def __init__(self, resdir):
@@ -28,6 +29,23 @@ class bmsqlResult:
         with open(fname, newline = '') as fd:
             rdr = csv.DictReader(fd)
             self.runinfo = next(rdr)
+
+        self.faultinfo = {}
+        fault_fname = os.path.join(self.datadir, 'faultInfo.csv')
+        with open(fault_fname, newline = '') as fd:
+            rdr = csv.DictReader(fd)
+            # if there is no fault, the faultinfo will be empty even
+            for row in rdr:
+                # only one fault is allowed currently
+                self.faultinfo = dict(row)
+                break  
+
+        trace_fname = os.path.join(self.datadir, 'trace.csv')
+        with open(trace_fname, newline='') as fd:
+            rdr = csv.DictReader(fd)
+            self.txn_trace = [row for row in rdr]
+
+        self.rto = self.rto()
 
         # ----
         # Load the other CSV files into dicts of arrays.
@@ -180,3 +198,34 @@ class bmsqlResult:
                 ttdict[ttype] = [tup[1] for tup in tuples]
 
         return ttdict
+
+    def rto(self):
+        """
+        Returns the recovery time objective in seconds.
+        """
+        if self.faultinfo == {}:
+            print("No fault found")
+            return 
+        fault_time = int(self.faultinfo["end"])
+        recovery_time = 0
+        for row in self.txn_trace:
+            if int(row["start"]) > fault_time and int(row["rollback"]) == 0 and int(row["error"]) == 0:
+                if recovery_time == 0:
+                    recovery_time = int(row["end"])
+                recovery_time = min(recovery_time, int(row["end"]))
+        # sort txn_trace by end time and find the longest gap of two successful transactions(by end time)
+        sorted_txn_trace = sorted(self.txn_trace, key=lambda x: int(x["end"]))
+        max_gap, prev_end = 0, 0
+        end1, start2, end2=0, 0, 0
+        for (i, row) in enumerate(sorted_txn_trace):
+            if int(row["rollback"]) == 0 and int(row["error"]) == 0:
+                if prev_end == 0:
+                    prev_end = int(row["end"])
+                else:
+                    if max_gap < int(row["end"]) - prev_end:
+                        max_gap = int(row["end"]) - prev_end
+                        end1, start2, end2 = prev_end, int(row['start']), int(row["end"])
+                    prev_end = int(row["end"])
+        print("Recovery time: ", datetime.datetime.fromtimestamp(recovery_time/1000), "Fault time: ", datetime.datetime.fromtimestamp(fault_time/1000), "rto: ", (recovery_time - fault_time), "ms")
+        print("Max gap: ", max_gap, "ms", "between", datetime.datetime.fromtimestamp(end1/1000), "and", datetime.datetime.fromtimestamp(end2/1000), "start2", datetime.datetime.fromtimestamp(start2/1000))
+        return recovery_time - fault_time

@@ -286,7 +286,7 @@ public class jTPCCMonkey {
         switch (tdata.trans_type) {
           case jTPCCTData.TT_NEW_ORDER:
             generateNewOrder(tdata);
-            key_mean = 18.0;
+            key_mean = 1.0;
             break;
 
           case jTPCCTData.TT_PAYMENT:

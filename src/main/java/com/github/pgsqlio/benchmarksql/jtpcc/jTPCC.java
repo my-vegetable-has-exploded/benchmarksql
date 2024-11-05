@@ -93,11 +93,15 @@ public class jTPCC {
   private static BufferedWriter histogramCSV = null;
   private static BufferedWriter resultCSV = null;
   private static BufferedWriter runInfoCSV = null;
+  private static BufferedWriter traceCSV = null;
+  private static BufferedWriter faultInfoCSV = null;
   public static int runID = 0;
   public static long csv_begin;
   public static long result_begin;
   public static long result_end;
   private static Object result_lock;
+  private static Object trace_lock;
+  private static Object fault_lock;
 
   public static void main(String args[]) throws FileNotFoundException {
     new jTPCC();
@@ -357,12 +361,12 @@ public class jTPCC {
       String runInfoCSVName = new File(resultDataDir, "runInfo.csv").getPath();
       try {
         runInfoCSV = new BufferedWriter(new FileWriter(runInfoCSVName));
-        runInfoCSV.write("runID,dbType,jTPCCVersion,application," + "rampupMins,runMins,"
+        runInfoCSV.write("runID,dbType,jTPCCVersion,application," + "rampupMins,runMins,startTS,"
             + "loadWarehouses,runWarehouses,numSUTThreads,"
             + "maxDeliveryBGThreads,maxDeliveryBGPerWarehouse," + "restartSUTThreadProbability,"
             + "thinkTimeMultiplier,keyingTimeMultiplier\n");
         runInfoCSV.write(runID + "," + iDBType + "," + jTPCCConfig.JTPCCVERSION + ","
-            + applicationName + "," + rampupMins + "," + runMins + "," + loadWarehouses + ","
+            + applicationName + "," + rampupMins + "," + runMins + "," + now + "," + loadWarehouses + ","
             + numWarehouses + "," + numSUTThreads + "," + maxDeliveryBGThreads + ","
             + maxDeliveryBGPerWH + "," + restartSUTThreadProb + "," + thinkTimeMultiplier + ","
             + keyingTimeMultiplier + "\n");
@@ -385,6 +389,29 @@ public class jTPCC {
       }
       log.info("main, writing aggregated transaction results to {}", resultCSVName);
       result_lock = new Object();
+
+	  // Open the trace.csv file recording transaction details
+	  String traceCSVName = new File(resultDataDir, "trace.csv").getPath();
+	  try {
+		traceCSV = new BufferedWriter(new FileWriter(traceCSVName));
+		traceCSV.write("start,end,rollback,error\n");
+	  } catch (IOException e) {
+		log.error(e.getMessage());
+		System.exit(1);
+	  }
+	  log.info("main, writing transaction trace to {}", traceCSVName);
+	  trace_lock = new Object();
+
+	  // Open the fault.csv file recording fault details
+	  String faultCSVName = new File(resultDataDir, "faultInfo.csv").getPath();
+	  try {
+		faultInfoCSV = new BufferedWriter(new FileWriter(faultCSVName));
+		faultInfoCSV.write("name,start,end\n");
+	  } catch (IOException e) {
+		log.error(e.getMessage());
+		System.exit(1);
+	  }
+	  fault_lock = new Object();
 
       // Open the aggregated summary.csv file
       String summaryCSVName = new File(resultDataDir, "summary.csv").getPath();
@@ -599,6 +626,30 @@ public class jTPCC {
         }
       }
     }
+  }
+
+  public static void csv_trace_write(String line) {
+	if (traceCSV != null) {
+	  synchronized (trace_lock) {
+		try {
+		  traceCSV.write(line);
+		  traceCSV.flush();
+		} catch (Exception e) {
+		}
+	  }
+	}
+  }
+
+  public static void csv_fault_write(String line) {
+	if (faultInfoCSV != null) {
+	  synchronized (fault_lock) {
+		try {
+		  faultInfoCSV.write(line);
+		  faultInfoCSV.flush();
+		} catch (Exception e) {
+		}
+	  }
+	}
   }
 
   public static void csv_summary_write(String line) {

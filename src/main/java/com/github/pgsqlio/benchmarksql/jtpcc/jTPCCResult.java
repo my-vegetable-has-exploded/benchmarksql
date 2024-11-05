@@ -10,6 +10,7 @@ public class jTPCCResult {
   public double statsDivider;
   private long resultStartMS;
   private long resultNextDue;
+  private StringBuffer traceLog = new StringBuffer();
 
   public static final int NUM_BUCKETS = 1000;
   public static final double STATS_CUTOFF = 600.0;
@@ -41,7 +42,8 @@ public class jTPCCResult {
     hCounter = histCounter[tdata.trans_type];
     rCounter = resCounter[tdata.trans_type];
 
-    latency = tdata.trans_end - tdata.trans_due;
+	// record latency caused by the transaction
+    latency = tdata.trans_end - tdata.trans_start;
     delay = tdata.trans_start - tdata.trans_due;
     if (latency < 1)
       bucket = 0;
@@ -62,8 +64,8 @@ public class jTPCCResult {
           if (hCounter.maxMS < latency)
             hCounter.maxMS = latency;
         }
-        hCounter.numTrans++;
-        hCounter.sumMS += latency;
+    	  hCounter.numTrans++;
+          hCounter.sumMS += latency;
         if (tdata.trans_error)
           hCounter.numError++;
         if (tdata.trans_rbk)
@@ -92,6 +94,8 @@ public class jTPCCResult {
         rCounter.maxDelayMS = delay;
     }
 
+	traceLog.append(tdata.trans_start + "," + tdata.trans_end + "," + (tdata.trans_rbk? "1":"0") + "," + (tdata.trans_error? "1":"0") + "\n");
+
     long now = System.currentTimeMillis();
     if (now >= resultNextDue) {
       this.emit(now);
@@ -116,6 +120,10 @@ public class jTPCCResult {
       resCounter[tt].minDelayMS = 0;
       resCounter[tt].maxDelayMS = 0;
     }
+	// write traceLog to csv
+	jTPCC.csv_trace_write(traceLog.toString());
+	// clear traceLog
+	traceLog.setLength(0);
 
     while (resultNextDue <= now)
       resultNextDue += (jTPCC.resultIntervalSecs * 1000);
