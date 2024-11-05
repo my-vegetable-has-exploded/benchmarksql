@@ -53,7 +53,7 @@ class bmsqlPlot:
         txn_stat = [0 for i in range(total_seconds)]
         x = range(-int(runinfo['rampupMins'])*60, int(runinfo['runMins'])*60, 1)
         for row in result.txn_trace:
-            end = int(row['end'] - startTS)//1000 
+            end = (int(row['end']) - startTS)//1000 
             if end >=0 and end < total_seconds:
                 txn_stat[end]+=1
 
