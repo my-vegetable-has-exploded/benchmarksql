@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # benchmarksql
-source bin/activate 
+source bm/bin/activate 
 cd target/run
 ./FlaskService/main.py & > benchmarksql.log 2>&1
 
