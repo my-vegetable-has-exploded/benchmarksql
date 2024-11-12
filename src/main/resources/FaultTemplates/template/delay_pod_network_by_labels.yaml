@@ -7,16 +7,14 @@ spec:
     - scope: pod
       target: network
       action: delay
-      desc: "delay pod network by names"
+      desc: "delay pod network by labels"
       matchers:
-        - name: names
+        - name: labels
           value: ["$PODNAME"]
         - name: namespace
           value: ["$NAMESPACE"]
-        # - name: local-port
-        #   value: ["$LOCALPORT"]
         - name: interface
-          value: ["$IFACE"]
+          value: ["$INTERFACE"]
         - name: time
           value: ["$LATENCY"]
         - name: timeout
