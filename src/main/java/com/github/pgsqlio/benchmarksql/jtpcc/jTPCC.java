@@ -406,7 +406,7 @@ public class jTPCC {
 	  String faultCSVName = new File(resultDataDir, "faultInfo.csv").getPath();
 	  try {
 		faultInfoCSV = new BufferedWriter(new FileWriter(faultCSVName));
-		faultInfoCSV.write("name,start,end\n");
+		faultInfoCSV.write("name,start,end,duration\n");
 	  } catch (IOException e) {
 		log.error(e.getMessage());
 		System.exit(1);

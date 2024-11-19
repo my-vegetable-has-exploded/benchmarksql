@@ -46,6 +46,7 @@ class bmsqlResult:
             self.txn_trace = [row for row in rdr]
 
         self.rto = self.rto()
+        self.stage_latency()
 
         # ----
         # Load the other CSV files into dicts of arrays.
@@ -198,6 +199,28 @@ class bmsqlResult:
                 ttdict[ttype] = [tup[1] for tup in tuples]
 
         return ttdict
+
+    def stage_latency(self):
+       """
+       Print the average latency for different stage, including last minute before the fault, duration time of fault, and average latency for first minute after the fault
+       """
+       fault_time = int(self.faultinfo["start"])
+       before_fault = (fault_time - 60000, fault_time)
+       fault_duration = (fault_time, fault_time + int(self.faultinfo["duration"]))
+       after_fault = (fault_time + int(self.faultinfo["duration"]), fault_time + int(self.faultinfo["duration"]) + 60000)
+       before_fault_latency = []
+       fault_duration_latency = []
+       after_fault_latency = []
+       for row in self.txn_trace:
+           if before_fault[0] <= int(row["start"]) < before_fault[1]:
+               before_fault_latency.append(int(row["end"]) - int(row["start"]))
+           elif fault_duration[0] <= int(row["start"]) < fault_duration[1]:
+               fault_duration_latency.append(int(row["end"]) - int(row["start"]))
+           elif after_fault[0] <= int(row["start"]) < after_fault[1]:
+               after_fault_latency.append(int(row["end"]) - int(row["start"]))
+       print("Average latency before fault: ", sum(before_fault_latency) / len(before_fault_latency) , " ms")
+       print("Average latency during fault: ", sum(fault_duration_latency) / len(fault_duration_latency) , " ms")
+       print("Average latency after fault: ", sum(after_fault_latency) / len(after_fault_latency) , " ms")
 
     def rto(self):
         """
