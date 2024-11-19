@@ -4,6 +4,7 @@ import math
 import json
 import re
 import datetime
+import duckdb
 
 class bmsqlResult:
     def __init__(self, resdir):
@@ -45,7 +46,7 @@ class bmsqlResult:
             rdr = csv.DictReader(fd)
             self.txn_trace = [row for row in rdr]
 
-        self.rto = self.rto()
+        self.rto = self.rto(trace_fname)
         self.stage_latency()
 
         # ----
@@ -204,6 +205,9 @@ class bmsqlResult:
        """
        Print the average latency for different stage, including last minute before the fault, duration time of fault, and average latency for first minute after the fault
        """
+       if self.faultinfo == {}:
+            print("No fault found")
+            return 
        fault_time = int(self.faultinfo["start"])
        before_fault = (fault_time - 60000, fault_time)
        fault_duration = (fault_time, fault_time + int(self.faultinfo["duration"]))
@@ -219,36 +223,59 @@ class bmsqlResult:
            elif after_fault[0] <= int(row["start"]) < after_fault[1]:
                after_fault_latency.append(int(row["end"]) - int(row["start"]))
        print("Average latency before fault: ", sum(before_fault_latency) / len(before_fault_latency) , " ms")
-       print("Average latency during fault: ", sum(fault_duration_latency) / len(fault_duration_latency) , " ms")
+       if len(fault_duration_latency) > 0:
+           print("Average latency during fault: ", sum(fault_duration_latency) / len(fault_duration_latency) , " ms")
        print("Average latency after fault: ", sum(after_fault_latency) / len(after_fault_latency) , " ms")
 
-    def rto(self):
+    def rto(self, trace_file):
         """
         Returns the recovery time objective in seconds.
         """
         if self.faultinfo == {}:
             print("No fault found")
             return 
-        fault_time = int(self.faultinfo["end"])
-        recovery_time = 0
-        for row in self.txn_trace:
-            if int(row["start"]) > fault_time and int(row["rollback"]) == 0 and int(row["error"]) == 0:
-                if recovery_time == 0:
-                    recovery_time = int(row["end"])
-                recovery_time = min(recovery_time, int(row["end"]))
-        # sort txn_trace by end time and find the longest gap of two successful transactions(by end time)
-        sorted_txn_trace = sorted(self.txn_trace, key=lambda x: int(x["end"]))
-        max_gap, prev_end = 0, 0
-        end1, start2, end2=0, 0, 0
-        for (i, row) in enumerate(sorted_txn_trace):
-            if int(row["rollback"]) == 0 and int(row["error"]) == 0:
-                if prev_end == 0:
-                    prev_end = int(row["end"])
-                else:
-                    if max_gap < int(row["end"]) - prev_end:
-                        max_gap = int(row["end"]) - prev_end
-                        end1, start2, end2 = prev_end, int(row['start']), int(row["end"])
-                    prev_end = int(row["end"])
-        print("Recovery time: ", datetime.datetime.fromtimestamp(recovery_time/1000), "Fault time: ", datetime.datetime.fromtimestamp(fault_time/1000), "rto: ", (recovery_time - fault_time), "ms")
-        print("Max gap: ", max_gap, "ms", "between", datetime.datetime.fromtimestamp(end1/1000), "and", datetime.datetime.fromtimestamp(end2/1000), "start2", datetime.datetime.fromtimestamp(start2/1000))
-        return recovery_time - fault_time
+
+        con = duckdb.connect()
+
+        # create a table from the trace file
+        con.execute("""
+            CREATE TABLE transactions AS SELECT * FROM read_csv_auto('""" + trace_file + """');""")
+
+        # find the fault start time and recovery end time
+        # step1: find all transactions whose result is error or rollback and record end time as possible fault start time
+        # step2: find the first transaction after the fault start time that is not error or rollback and record end time as possible recovery end time, the fault start time and recovery end time pair is a possible rto interval
+        # step3: check possible rto intervals whether there are any successful transactions between fault start time and recovery end time, if there are, then this rto interval is invalid
+        # step4: find the longest valid rto interval
+        max_rto_query = """
+            WITH fault_transactions AS (
+                SELECT transactions.end AS fault_start
+                FROM transactions
+                WHERE error = 1 OR rollback = 1
+            ),
+            recovery_transactions AS (
+                SELECT ft.fault_start AS fault_start, Min(t.end) AS recovery_end
+                FROM fault_transactions ft
+                JOIN transactions t ON t.end > ft.fault_start
+                WHERE t.error = 0 AND t.rollback = 0
+                GROUP BY ft.fault_start
+            ),
+            rto_calculation AS (
+                SELECT rt.fault_start, rt.recovery_end,
+                    COUNT(CASE WHEN t.start IS NOT NULL AND t.end IS NOT NULL THEN 1 END) OVER (PARTITION BY rt.fault_start) AS success_count
+                FROM recovery_transactions rt 
+                LEFT JOIN transactions t ON t.end > rt.fault_start AND t.end < rt.recovery_end AND t.error = 0 AND t.rollback = 0
+            )
+            SELECT MAX(recovery_end - fault_start) AS max_rto
+            FROM rto_calculation
+            WHERE success_count = 0;
+        """
+
+        # get max RTO
+        max_rto = con.execute(max_rto_query).fetchone()[0]
+
+        if max_rto:
+            print(f"Max RTO: {max_rto} ms")
+        else:
+            print("No valid recovery stage found.")
+
+        con.close()
