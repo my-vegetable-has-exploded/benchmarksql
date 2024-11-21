@@ -238,31 +238,34 @@ class bmsqlResult:
         con = duckdb.connect()
 
         # create a table from the trace file
+		# CREATE TABLE transactions AS SELECT * FROM read_csv_auto('service_data/result_000059/data/trace.csv');
         con.execute("""
             CREATE TABLE transactions AS SELECT * FROM read_csv_auto('""" + trace_file + """');""")
 
         # find the fault start time and recovery end time
         # step1: find all transactions whose result is error or rollback and record end time as possible fault start time
+		# CREATE TEMP TABLE successful_transactions AS SELECT transactions.start, transactions.end FROM transactions WHERE error = 0 AND rollback = 0;
         # step2: find the first transaction after the fault start time that is not error or rollback and record end time as possible recovery end time, the fault start time and recovery end time pair is a possible rto interval
+		# CREATE TEMP TABLE recovery_interval AS SELECT t.end as fault_start, st.end as recovery_end FROM transactions t ASOF JOIN successful_transactions st ON t.end < st.end;
         # step3: check possible rto intervals whether there are any successful transactions between fault start time and recovery end time, if there are, then this rto interval is invalid
+		# CREATE TEMP TABLE rto_calculation AS SELECT rt.fault_start, rt.recovery_end, COUNT(CASE WHEN t.start IS NOT NULL AND t.end IS NOT NULL THEN 1 END) OVER (PARTITION BY rt.fault_start) AS success_count FROM recovery_interval rt LEFT JOIN transactions t ON t.end > rt.fault_start AND t.end < rt.recovery_end AND t.error = 0 AND t.rollback = 0;
         # step4: find the longest valid rto interval
         max_rto_query = """
-            WITH fault_transactions AS (
-                SELECT transactions.end AS fault_start
+            WITH successful_transactions AS (
+                SELECT transactions.start, transactions.end
                 FROM transactions
-                WHERE error = 1 OR rollback = 1
+                WHERE error = 0 AND rollback = 0
             ),
-            recovery_transactions AS (
-                SELECT ft.fault_start AS fault_start, Min(t.end) AS recovery_end
-                FROM fault_transactions ft
-                JOIN transactions t ON t.end > ft.fault_start
-                WHERE t.error = 0 AND t.rollback = 0
-                GROUP BY ft.fault_start
+            recovery_interval AS (
+				SELECT t.end AS fault_start, st.end AS recovery_end 
+                FROM transactions t 
+      			ASOF JOIN successful_transactions st
+  				ON t.end < st.end
             ),
             rto_calculation AS (
                 SELECT rt.fault_start, rt.recovery_end,
                     COUNT(CASE WHEN t.start IS NOT NULL AND t.end IS NOT NULL THEN 1 END) OVER (PARTITION BY rt.fault_start) AS success_count
-                FROM recovery_transactions rt 
+                FROM recovery_interval rt 
                 LEFT JOIN transactions t ON t.end > rt.fault_start AND t.end < rt.recovery_end AND t.error = 0 AND t.rollback = 0
             )
             SELECT MAX(recovery_end - fault_start) AS max_rto
