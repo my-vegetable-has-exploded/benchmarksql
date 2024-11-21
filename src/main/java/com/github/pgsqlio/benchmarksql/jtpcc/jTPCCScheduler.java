@@ -6,6 +6,8 @@ import java.util.Random;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.github.pgsqlio.benchmarksql.chaos.ChaosInjecter;
+
 /**
  * jTPCCScheduler - Event scheduler for jTPCC
  */
@@ -69,6 +71,19 @@ public class jTPCCScheduler implements Runnable {
     log.info("Scheduler, ready");
 
     for (;;) {
+	  now = System.currentTimeMillis();
+	  if(!faultInjected && now >= faultMin*60000 + start_ms) {
+		faultInjected = true;
+		new Thread(() -> {
+		  try {
+		    ChaosInjecter chaosInjecter = ChaosInjecter.getInstance(this.gdata);
+		    chaosInjecter.inject();
+		  } catch (Exception e) {
+		    log.error("Scheduler, fault injection failed: {}", e.getMessage());
+		  }
+		}).start();
+		this.faultInjectTime = now;
+	  }
       /*
        * Fetch the next event from the "timestamp sorted" scheduler event queue.
        */
@@ -131,16 +146,16 @@ public class jTPCCScheduler implements Runnable {
             case jTPCCTData.TT_NEW_ORDER:
               current_trans_count++;
               current_neword_count++;
-			  // inject fault at fault_min
-			  if (!faultInjected && tdata.trans_due >= faultMin*60000 + start_ms) {
-			    // log.info("Scheduler, inject fault at {}", new java.sql.Timestamp(now));
-				// mutate the tdata to add fault
-				if (tdata.trans_type == jTPCCTData.TT_NEW_ORDER) {
-				  faultInjected = true;
-				  tdata.new_order.faults[0] = new ArrayList<>();
-				  tdata.new_order.faults[0].add(0);
-				}	
-			  }
+			//   // inject fault at fault_min
+			//   if (!faultInjected && tdata.trans_due >= faultMin*60000 + start_ms) {
+			//     // log.info("Scheduler, inject fault at {}", new java.sql.Timestamp(now));
+			// 	// mutate the tdata to add fault
+			// 	if (tdata.trans_type == jTPCCTData.TT_NEW_ORDER) {
+			// 	  faultInjected = true;
+			// 	  tdata.new_order.faults[0] = new ArrayList<>();
+			// 	  tdata.new_order.faults[0].add(0);
+			// 	}	
+			//   }
 
               break;
             case jTPCCTData.TT_PAYMENT:
