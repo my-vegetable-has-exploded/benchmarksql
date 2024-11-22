@@ -268,16 +268,20 @@ class bmsqlResult:
                 FROM recovery_interval rt 
                 LEFT JOIN transactions t ON t.end > rt.fault_start AND t.end < rt.recovery_end AND t.error = 0 AND t.rollback = 0
             )
-            SELECT MAX(recovery_end - fault_start) AS max_rto
+            SELECT fault_start, recovery_end, (recovery_end - fault_start) AS rto_duration
             FROM rto_calculation
-            WHERE success_count = 0;
+            WHERE success_count = 0
+            ORDER BY rto_duration DESC
+            LIMIT 1
         """
+            
 
         # get max RTO
-        max_rto = con.execute(max_rto_query).fetchone()[0]
-
-        if max_rto:
-            print(f"Max RTO: {max_rto} ms")
+        rto_result = con.execute(max_rto_query).fetchone()
+        fault_start, recovery_end, rto_duration = rto_result if rto_result else (None, None, None)
+        
+        if rto_duration:
+            print(f"Max RTO: {rto_duration} ms, start time: {datetime.datetime.fromtimestamp(fault_start / 1000)}, end time: {datetime.datetime.fromtimestamp(recovery_end / 1000)}")
         else:
             print("No valid recovery stage found.")
 
