@@ -95,6 +95,7 @@ public class jTPCC {
   private static BufferedWriter runInfoCSV = null;
   private static BufferedWriter traceCSV = null;
   private static BufferedWriter faultInfoCSV = null;
+  private static BufferedWriter txnlogCSV = null;
   public static int runID = 0;
   public static long csv_begin;
   public static long result_begin;
@@ -241,7 +242,7 @@ public class jTPCC {
     }
 
     /*
-     * Get the load configuration from the database
+     * Get the load configuration from the database and clear bmsql_txnlog table
      */
     try {
       Connection dbConn;
@@ -279,9 +280,14 @@ public class jTPCC {
 
       cfgStmt.close();
       dbConn.rollback();
+
+	  PreparedStatement txnlogStmt = dbConn.prepareStatement("DELETE FROM bmsql_txnlog");
+	  txnlogStmt.executeUpdate();
+	  txnlogStmt.close();
+	  dbConn.commit();
       dbConn.close();
     } catch (Exception ex) {
-      log.error("main, Unable to read load configuration");
+      log.error("main, Unable to read load configuration and clear bmsql_txnlog");
       log.error("main, {}", ex.getMessage());
       return;
     }
@@ -394,7 +400,7 @@ public class jTPCC {
 	  String traceCSVName = new File(resultDataDir, "trace.csv").getPath();
 	  try {
 		traceCSV = new BufferedWriter(new FileWriter(traceCSVName));
-		traceCSV.write("start,end,rollback,error\n");
+		traceCSV.write("txn_id,start,end,rollback,error\n");
 	  } catch (IOException e) {
 		log.error(e.getMessage());
 		System.exit(1);
@@ -434,6 +440,17 @@ public class jTPCC {
         System.exit(1);
       }
       log.info("main, writing transaction histogram to " + histogramCSVName);
+
+	  // Open the txnlog.csv file recording txn log from database
+	  String txnlogCSVName = new File(resultDataDir, "txnlog.csv").getPath();
+	  try {
+		txnlogCSV = new BufferedWriter(new FileWriter(txnlogCSVName));
+		txnlogCSV.write("txn_id\n");
+	  } catch (IOException e) {
+		log.error(e.getMessage());
+		System.exit(1);
+	  }
+	  log.info("main, writing transaction log to {}", txnlogCSVName);
 
       // Launch the metric collector script if configured
       if (osCollectorScript != null) {
@@ -603,6 +620,37 @@ public class jTPCC {
       osCollector = null;
       log.info("main, OS Collector stopped");
     }
+
+	// read all txn_id from bmsql_txnlog and write to txnlog.csv
+	try {
+	  Connection dbConn = DriverManager.getConnection(iConn, iUser, iPassword);
+	  dbConn.setAutoCommit(false);
+	  PreparedStatement txnlogStmt = dbConn.prepareStatement("SELECT txn_id FROM bmsql_txnlog");
+	  ResultSet rs = txnlogStmt.executeQuery();
+	  while (rs.next()) {
+		long txn_id = rs.getLong("txn_id");
+		txnlogCSV.write(txn_id + "\n");
+	  }
+	  txnlogCSV.flush();
+	  txnlogStmt.close();
+	  dbConn.commit();
+	  dbConn.close();
+	} catch (Exception ex) {
+	  log.error("main, Unable to read bmsql_txnlog");
+	  log.error("main, {}", ex.getMessage());
+	}
+
+	/*
+	 * Close the txnlog CSV
+	 */
+	if (txnlogCSV != null) {
+	  try {
+		log.info("transaction log file finished");
+		txnlogCSV.close();
+	  } catch (Exception e) {
+		log.error(e.getMessage());
+	  }
+	}
   }
 
   public jTPCCApplication getApplication() {

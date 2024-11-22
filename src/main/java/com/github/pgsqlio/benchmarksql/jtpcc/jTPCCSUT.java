@@ -89,6 +89,7 @@ public class jTPCCSUT {
 
   private class SUTThread implements Runnable {
     private int t_id;
+	private long txns = 0;
     private Random random;
     private jTPCCApplication application;
 	private long lanuchTime = 0;
@@ -157,31 +158,36 @@ public class jTPCCSUT {
 		// any fault happened in the previous transaction?
 		boolean faultHappend = false;
 
+		// transaction id, (sut_id<<32) + txns
+		long txn_id = (t_id << 32) + txns;
+		txns++;
+		tdata.txn_id = txn_id;
+
         /* Process the requested transaction on the database. */
         try {
           switch (tdata.trans_type) {
             case jTPCCTData.TT_NEW_ORDER:
-              processNewOrder(tdata);
+              processNewOrder(tdata, txn_id);
               break;
 
             case jTPCCTData.TT_PAYMENT:
-              processPayment(tdata);
+              processPayment(tdata, txn_id);
               break;
 
             case jTPCCTData.TT_ORDER_STATUS:
-              processOrderStatus(tdata);
+              processOrderStatus(tdata, txn_id);
               break;
 
             case jTPCCTData.TT_STOCK_LEVEL:
-              processStockLevel(tdata);
+              processStockLevel(tdata, txn_id);
               break;
 
             case jTPCCTData.TT_DELIVERY:
-              processDelivery(tdata);
+              processDelivery(tdata, txn_id);
               break;
 
             case jTPCCTData.TT_DELIVERY_BG:
-              processDeliveryBG(tdata);
+              processDeliveryBG(tdata, txn_id);
               break;
 
             default:
@@ -258,31 +264,31 @@ public class jTPCCSUT {
       }
     }
 
-    private void processNewOrder(jTPCCTData tdata) throws Exception {
-      application.executeNewOrder(tdata.new_order, tdata.trans_rbk);
+    private void processNewOrder(jTPCCTData tdata, long txn_id) throws Exception {
+      application.executeNewOrder(tdata.new_order, tdata.trans_rbk, txn_id);
     }
 
-    private void processPayment(jTPCCTData tdata) throws Exception {
-      application.executePayment(tdata.payment);
+    private void processPayment(jTPCCTData tdata, long txn_id) throws Exception {
+      application.executePayment(tdata.payment, txn_id);
     }
 
-    private void processOrderStatus(jTPCCTData tdata) throws Exception {
-      application.executeOrderStatus(tdata.order_status);
+    private void processOrderStatus(jTPCCTData tdata, long txn_id) throws Exception {
+      application.executeOrderStatus(tdata.order_status, txn_id);
     }
 
-    private void processStockLevel(jTPCCTData tdata) throws Exception {
-      application.executeStockLevel(tdata.stock_level);
+    private void processStockLevel(jTPCCTData tdata, long txn_id) throws Exception {
+      application.executeStockLevel(tdata.stock_level, txn_id);
     }
 
-    private void processDelivery(jTPCCTData tdata) {
+    private void processDelivery(jTPCCTData tdata, long txn_id) {
       jTPCCTData.DeliveryData screen = tdata.delivery;
 
       deliveryBg.queueAppend(tdata);
       screen.execution_status = new String("Delivery has been queued");
     }
 
-    private void processDeliveryBG(jTPCCTData tdata) throws Exception {
-      application.executeDeliveryBG(tdata.delivery_bg);
+    private void processDeliveryBG(jTPCCTData tdata, long txn_id) throws Exception {
+      application.executeDeliveryBG(tdata.delivery_bg, txn_id);
     }
 
     private long randomInt(long min, long max) {

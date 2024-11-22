@@ -46,7 +46,10 @@ class bmsqlResult:
             rdr = csv.DictReader(fd)
             self.txn_trace = [row for row in rdr]
 
+        txn_fname = os.path.join(self.datadir, 'txnlog.csv')
+
         self.rto = self.rto(trace_fname)
+        self.rpo = self.rpo(trace_fname, txn_fname)
         self.stage_latency()
 
         # ----
@@ -286,3 +289,40 @@ class bmsqlResult:
             print("No valid recovery stage found.")
 
         con.close()
+
+    def rpo(self, trace_file, txn_file):
+        """
+        Returns the recovery point objective in milliseconds.
+        """
+        if self.faultinfo == {}:
+            print("No fault found")
+            return
+        
+        # get all txn from trace file, and compare with txn file
+        # find all loss txn_id who are in trace file but are not in txn file
+        # the rpo result is the merge interval of all loss txn_id interval
+        # for example, if the loss txn_id interval(start, end) is [1, 3], [2, 6], [5, 9], [15, 17], then the rpo result is len([1, 9]) + len([15, 17]) = 8 + 2 = 10
+        
+        persisted_txn_ids = set()
+        with open(txn_file, newline='') as fd:
+            rdr = csv.DictReader(fd)
+            for row in rdr:
+                persisted_txn_ids.add(row['txn_id'])
+        
+        loss_txn_intervals = []
+        with open(trace_file, newline='') as fd:
+            rdr = csv.DictReader(fd)
+            for row in rdr:
+                if row['txn_id'] not in persisted_txn_ids:
+                    loss_txn_intervals.append((int(row['start']), int(row['end'])))
+        
+        loss_txn_intervals.sort()
+        merged_intervals = []
+        for interval in loss_txn_intervals:
+            if not merged_intervals or merged_intervals[-1][1] < interval[0]:
+                merged_intervals.append(interval)
+            else:
+                merged_intervals[-1] = (merged_intervals[-1][0], max(merged_intervals[-1][1], interval[1]))
+        
+        rpo = sum([interval[1] - interval[0] for interval in merged_intervals])
+        print(f"RPO: {rpo} ms")

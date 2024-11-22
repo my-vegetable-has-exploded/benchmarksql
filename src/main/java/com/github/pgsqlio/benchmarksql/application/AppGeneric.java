@@ -68,6 +68,7 @@ public class AppGeneric extends jTPCCApplication {
   public PreparedStatement stmtDeliveryBGUpdateOrderLine;
   public PreparedStatement stmtDeliveryBGUpdateCustomer;
 
+  public PreparedStatement stmtTxnLog;
 
   public void init(jTPCC gdata, int sut_id) throws Exception {
     Properties dbProps;
@@ -356,6 +357,11 @@ public class AppGeneric extends jTPCCApplication {
         + "    SET c_balance = c_balance + ?, "
         + "        c_delivery_cnt = c_delivery_cnt + 1 "
         + "    WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?");
+
+	stmtTxnLog = dbConn.prepareStatement(
+		  "INSERT INTO bmsql_txnlog (txn_id)"
+		+ "VALUES (?)"
+	);
     dbConn.commit();
   }
 
@@ -376,7 +382,7 @@ public class AppGeneric extends jTPCCApplication {
 	}
   }
 
-  public void executeNewOrder(jTPCCTData.NewOrderData newOrder, boolean trans_rbk)
+  public void executeNewOrder(jTPCCTData.NewOrderData newOrder, boolean trans_rbk, long txn_id)
       throws Exception {
     PreparedStatement stmt;
     PreparedStatement insertOrderLineBatch;
@@ -663,6 +669,11 @@ public class AppGeneric extends jTPCCApplication {
       newOrder.execution_status = new String("Order placed");
       newOrder.total_amount = total_amount;
 
+	  PreparedStatement tracestmt;
+	  tracestmt = stmtTxnLog;
+	  tracestmt.setLong(1, txn_id);
+	  tracestmt.executeUpdate();
+
       dbConn.commit();
 
     } catch (SQLException se) {
@@ -692,7 +703,7 @@ public class AppGeneric extends jTPCCApplication {
     }
   }
 
-  public void executePayment(jTPCCTData.PaymentData payment) throws Exception {
+  public void executePayment(jTPCCTData.PaymentData payment, long txn_id) throws Exception {
     PreparedStatement stmt;
     ResultSet rs;
     Vector<Integer> c_id_list = new Vector<Integer>();
@@ -875,6 +886,11 @@ public class AppGeneric extends jTPCCApplication {
 
       payment.h_date = new java.sql.Timestamp(h_date).toString();
 
+	  PreparedStatement tracestmt;
+	  tracestmt = stmtTxnLog;
+	  tracestmt.setLong(1, txn_id);
+	  tracestmt.executeUpdate();
+
       dbConn.commit();
     } catch (SQLException se) {
       log.error("Unexpected SQLException in PAYMENT - stmt = '" +
@@ -899,7 +915,7 @@ public class AppGeneric extends jTPCCApplication {
     }
   }
 
-  public void executeOrderStatus(jTPCCTData.OrderStatusData orderStatus) throws Exception {
+  public void executeOrderStatus(jTPCCTData.OrderStatusData orderStatus, long txn_id) throws Exception {
     PreparedStatement stmt;
     ResultSet rs;
     Vector<Integer> c_id_list = new Vector<Integer>();
@@ -998,6 +1014,11 @@ public class AppGeneric extends jTPCCApplication {
         ol_idx++;
       }
 
+	  PreparedStatement tracestmt;
+	  tracestmt = stmtTxnLog;
+	  tracestmt.setLong(1, txn_id);
+	  tracestmt.executeUpdate();
+
       dbConn.commit();
     } catch (SQLException se) {
       log.error("Unexpected SQLException in ORDER_STATUS - stmt = '" +
@@ -1022,7 +1043,7 @@ public class AppGeneric extends jTPCCApplication {
     }
   }
 
-  public void executeStockLevel(jTPCCTData.StockLevelData stockLevel) throws Exception {
+  public void executeStockLevel(jTPCCTData.StockLevelData stockLevel, long txn_id) throws Exception {
     PreparedStatement stmt;
     ResultSet rs;
 
@@ -1042,6 +1063,11 @@ public class AppGeneric extends jTPCCApplication {
       }
       stockLevel.low_stock = rs.getInt("low_stock");
       rs.close();
+
+	  PreparedStatement tracestmt;
+	  tracestmt = stmtTxnLog;
+	  tracestmt.setLong(1, txn_id);
+	  tracestmt.executeUpdate();
 
       dbConn.commit();
     } catch (SQLException se) {
@@ -1067,7 +1093,7 @@ public class AppGeneric extends jTPCCApplication {
     }
   }
 
-  public void executeDeliveryBG(jTPCCTData.DeliveryBGData deliveryBG) throws Exception {
+  public void executeDeliveryBG(jTPCCTData.DeliveryBGData deliveryBG, long txn_id) throws Exception {
     PreparedStatement stmt1;
     PreparedStatement stmt2;
     ResultSet rs;
@@ -1192,6 +1218,11 @@ public class AppGeneric extends jTPCCApplication {
         // Recored the delivered O_ID in the DELIVERY_BG
         deliveryBG.delivered_o_id[d_id - 1] = o_id;
       }
+
+	  PreparedStatement tracestmt;
+	  tracestmt = stmtTxnLog;
+	  tracestmt.setLong(1, txn_id);
+	  tracestmt.executeUpdate();
 
       dbConn.commit();
     } catch (SQLException se) {

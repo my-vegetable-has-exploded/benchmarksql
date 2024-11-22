@@ -25,6 +25,7 @@ public class jTPCCTData {
   public boolean trans_rbk;
   public boolean trans_error;
   public String trans_error_reason = null;
+  public long txn_id;
 
   public int term_w_id = 0;
   public int term_d_id = 0;

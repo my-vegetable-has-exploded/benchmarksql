@@ -135,3 +135,6 @@ create table bmsql_stock (
   constraint pk_stock primary key (s_w_id, s_i_id)
 ) partition by hash(s_w_id) partitions 1024;
 
+CREATE TABLE bmsql_txnlog (
+  txn_id  BIGINT  not null
+);

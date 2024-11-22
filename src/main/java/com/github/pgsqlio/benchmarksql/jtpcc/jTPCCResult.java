@@ -94,7 +94,7 @@ public class jTPCCResult {
         rCounter.maxDelayMS = delay;
     }
 
-	traceLog.append(tdata.trans_start + "," + tdata.trans_end + "," + (tdata.trans_rbk? "1":"0") + "," + (tdata.trans_error? "1":"0") + "\n");
+	traceLog.append(tdata.txn_id + "," + tdata.trans_start + "," + tdata.trans_end + "," + (tdata.trans_rbk? "1":"0") + "," + (tdata.trans_error? "1":"0") + "\n");
 
     long now = System.currentTimeMillis();
     if (now >= resultNextDue) {

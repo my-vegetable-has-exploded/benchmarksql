@@ -134,3 +134,7 @@ CREATE TABLE bmsql_stock (
    s_dist_10    char(24),
    PRIMARY KEY (s_w_id, s_i_id)
 )tablegroup='tpcc_group' use_bloom_filter=true partition by hash(s_w_id) partitions 9;
+
+CREATE TABLE bmsql_txnlog (
+  txn_id  BIGINT  not null
+);
