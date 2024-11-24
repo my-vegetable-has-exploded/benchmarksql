@@ -168,6 +168,8 @@ class bmsqlPlot:
         # if len(latency) < len(x), insert 0s at the beginning of latency
         if len(latency) < len(x):
             latency = [0] * (len(x) - len(latency)) + latency
+        elif len(latency) > len(x):
+            latency = latency[:len(x)]
         plt.plot(x, latency, 'b', label = 'Latency')
 
         plt.set_title("{} Average Latency and Delay".format(ttype))
