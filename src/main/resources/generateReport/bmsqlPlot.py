@@ -9,6 +9,7 @@ import matplotlib.pyplot as pyplot
 from mpl_toolkits.axes_grid1 import Divider, Size
 from mpl_toolkits.axes_grid1.mpl_axes import Axes
 import json
+import duckdb
 
 from generateReport import *
 
@@ -93,8 +94,8 @@ class bmsqlPlot:
         # ----
         # The X limits are -rampupMins, runMins
         # ----
-        plt.set_xlim(-int(runinfo['rampupMins']), int(runinfo['runMins']))
-        plt.axvspan(-int(runinfo['rampupMins']), 0,
+        plt.set_xlim(-int(runinfo['rampupMins'])*60, int(runinfo['runMins'])*60)
+        plt.axvspan(-int(runinfo['rampupMins'])*60, 0,
                     facecolor = '0.2', alpha = 0.1)
 
         # ----
@@ -104,55 +105,70 @@ class bmsqlPlot:
         # ----
         offset = (int(runinfo['rampupMins'])) * 60.0
 
-        # ----
-        # ttype transaction delay. First get the timestamp
-        # and delay numbers from the result data.
-        # The X vector then is the sorted unique timestamps rounded
-        # to an interval.
-        # ----
-        interval = 10
-        data = numpy.array([[(int(tup[0] / interval) * interval - offset) / 60,
-                           tup[1], tup[5]]
-                           for tup in result.result_ttype[ttype]])
-        x = sorted(numpy.unique(data[:,0]))
+        # # ----
+        # # ttype transaction delay. First get the timestamp
+        # # and delay numbers from the result data.
+        # # The X vector then is the sorted unique timestamps rounded
+        # # to an interval.
+        # # ----
+        # interval = 10
+        # data = numpy.array([[(int(tup[0] / interval) * interval - offset) / 60,
+        #                    tup[1], tup[5]]
+        #                    for tup in result.result_ttype[ttype]])
+        # x = sorted(numpy.unique(data[:,0]))
 
-        # ----
-        # The Y vector is the sums of transactions delay divided by
-        # the sums of the count, grouped by X.
-        # ----
-        y = []
-        for ts in x:
-            tmp = data[numpy.where(data[:,0] == ts)]
-            ms = numpy.sum(tmp[:,2]) / (numpy.sum(tmp[:,1]) + 0.000001)
-            if ms <= max_ms:
-                y.append(ms)
-            else:
-                y.append(max_ms)
+        # # ----
+        # # The Y vector is the sums of transactions delay divided by
+        # # the sums of the count, grouped by X.
+        # # ----
+        # y = []
+        # for ts in x:
+        #     tmp = data[numpy.where(data[:,0] == ts)]
+        #     ms = numpy.sum(tmp[:,2]) / (numpy.sum(tmp[:,1]) + 0.000001)
+        #     if ms <= max_ms:
+        #         y.append(ms)
+        #     else:
+        #         y.append(max_ms)
 
-        # ----
-        # Plot the ttype delay and add all the decorations
-        # ----
-        plt.plot(x, y, 'r', label = 'Delay')
+        # # ----
+        # # Plot the ttype delay and add all the decorations
+        # # ----
+        # plt.plot(x, y, 'r', label = 'Delay')
 
         # ----
         # Now do the same aggregation for the latency
         # ----
-        data = numpy.array([[(int(tup[0] / interval) * interval - offset) / 60,
-                           tup[1], tup[2]]
-                           for tup in result.result_ttype[ttype]])
 
-        # ----
-        # The Y vector is similar by based on latency
-        # ----
-        y = []
-        for ts in x:
-            tmp = data[numpy.where(data[:,0] == ts)]
-            ms = numpy.sum(tmp[:,2]) / (numpy.sum(tmp[:,1]) + 0.000001)
-            if ms <= max_ms:
-                y.append(ms)
-            else:
-                y.append(max_ms)
-        plt.plot(x, y, 'b', label = 'Latency')
+        x = range(-int(runinfo['rampupMins'])*60, int(runinfo['runMins'])*60, 1)
+        
+        con = duckdb.connect()
+        # create a table from the trace file
+		# CREATE TABLE transactions AS SELECT * FROM read_csv_auto('service_data/result_000059/data/trace.csv');
+        con.execute("""
+            CREATE TABLE transactions AS SELECT * FROM read_csv_auto('""" + self.result.trace_fname + """');""")
+        # select average latency in ms for each second for the given successful transaction type
+        con.execute("""
+            WITH transaction_delays AS (
+            SELECT
+                FLOOR(t.end / 1000) AS end_time,
+                (t.end - t.start) AS delay
+            FROM transactions t
+            WHERE rollback = 0 AND error = 0 AND ttype = '""" + ttype + """'
+            )
+            SELECT
+                t.end_time,
+                AVG(delay) AS avg_delay
+            FROM transaction_delays t
+            GROUP BY t.end_time
+            ORDER BY end_time;
+        """)
+
+        latency = con.fetchall()
+        latency = [l[1] for l in latency]
+        # if len(latency) < len(x), insert 0s at the beginning of latency
+        if len(latency) < len(x):
+            latency = [0] * (len(x) - len(latency)) + latency
+        plt.plot(x, latency, 'b', label = 'Latency')
 
         plt.set_title("{} Average Latency and Delay".format(ttype))
         plt.set_xlabel("Elapsed Minutes")

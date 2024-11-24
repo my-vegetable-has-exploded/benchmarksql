@@ -41,15 +41,15 @@ class bmsqlResult:
                 self.faultinfo = dict(row)
                 break  
 
-        trace_fname = os.path.join(self.datadir, 'trace.csv')
-        with open(trace_fname, newline='') as fd:
+        self.trace_fname = os.path.join(self.datadir, 'trace.csv')
+        with open(self.trace_fname, newline='') as fd:
             rdr = csv.DictReader(fd)
             self.txn_trace = [row for row in rdr]
 
         txn_fname = os.path.join(self.datadir, 'txnlog.csv')
 
-        self.rto = self.rto(trace_fname)
-        self.rpo = self.rpo(trace_fname, txn_fname)
+        self.rto = self.rto(self.trace_fname)
+        self.rpo = self.rpo(self.trace_fname, txn_fname)
         self.stage_latency()
 
         # ----

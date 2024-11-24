@@ -85,6 +85,9 @@ public class ChaosClient {
 				try {
 					if (duration > 0) {
 						Thread.sleep(duration);
+					} else {
+						// wait for injection to take effect
+						Thread.sleep(10000);
 					}
 
 					// 执行 kubectl delete 命令

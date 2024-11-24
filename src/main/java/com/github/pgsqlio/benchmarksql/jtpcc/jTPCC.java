@@ -400,7 +400,7 @@ public class jTPCC {
 	  String traceCSVName = new File(resultDataDir, "trace.csv").getPath();
 	  try {
 		traceCSV = new BufferedWriter(new FileWriter(traceCSVName));
-		traceCSV.write("txn_id,start,end,rollback,error\n");
+		traceCSV.write("txn_id,ttype,start,end,rollback,error\n");
 	  } catch (IOException e) {
 		log.error(e.getMessage());
 		System.exit(1);
