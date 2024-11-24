@@ -33,8 +33,8 @@ public class InjectTest {
 		p.setProperty("k8scli", "wy@133.133.135.56");
 		p.setProperty("namespace", "oceanbase");
 		p.setProperty("iface", "ens6f1");
-		p.setProperty("pods", "zone1, zone2, zone3");
-		p.setProperty("leader", "zone1");
+		p.setProperty("pods", "ref-obzone=obcluster-1-zone1, ref-obzone=obcluster-1-zone1, ref-obzone=obcluster-1-zone1");
+		p.setProperty("leader", "ref-obzone=obcluster-1-zone1");
 		p.setProperty("serverport", "2883");
 		p.setProperty("faults", "leader_fail.yaml");
 
@@ -58,7 +58,7 @@ public class InjectTest {
 			yamlDumper.dump(describe, writer);
 			String yamlString = writer.toString();
 
-			String expected = String.format("apiVersion: chaosblade.io/v1alpha1\nkind: ChaosBlade\nmetadata:\n  name: fail-pod-by-labels\nspec:\n  experiments:\n  - scope: pod\n    target: pod\n    action: fail\n    desc: inject fail image to select pod\n    matchers:\n    - name: labels\n      value:\n      - zone1\n    - name: namespace\n      value:\n      - oceanbase\n    - name: evict-count\n      value:\n      - '1'\n");
+			String expected = String.format("apiVersion: chaos-mesh.org/v1alpha1\nkind: PodChaos\nmetadata:\n  name: fail-pod-by-labels\n  namespace: chaos-testing\nspec:\n  action: pod-kill\n  mode: one\n  selector:\n    namespaces:\n    - oceanbase\n    labelSelectors:\n      ref-obzone: obcluster-1-zone1\n");
 			assertEquals(expected, yamlString);
 
 		} catch (Exception e) {

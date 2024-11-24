@@ -1,23 +1,16 @@
-apiVersion: chaosblade.io/v1alpha1
-kind: ChaosBlade
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
 metadata:
-  name: delay-pod-network-by-names
+  name: delay
 spec:
-  experiments:
-    - scope: pod
-      target: network
-      action: delay
-      desc: "delay pod network by labels"
-      matchers:
-        - name: labels
-          value: ["$PODNAME"]
-        - name: namespace
-          value: ["$NAMESPACE"]
-        - name: interface
-          value: ["$INTERFACE"]
-        - name: time
-          value: ["$LATENCY"]
-        - name: timeout
-          value: ["$DURATION"]
-        - name: offset
-          value: ["10"]
+  action: delay
+  mode: one
+  selector:
+    namespaces:
+      - '$NAMESPACE'
+    labelSelectors: '$PODNAME'
+  delay:
+    latency: '$LATENCY'
+    correlation: '0'
+    jitter: '0ms'
+  duration: '$DURATION'

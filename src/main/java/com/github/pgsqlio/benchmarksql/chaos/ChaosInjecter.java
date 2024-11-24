@@ -84,7 +84,7 @@ public class ChaosInjecter {
 		}
 	}
 
-	private static void replacePlaceholders(Object data, HashMap<String, String> replacements) {
+	private static void replacePlaceholders(Object data, HashMap<String, Object> replacements) {
 		if (data instanceof Map) {
 			Map<Object, Object> map = (Map<Object, Object>) data;
 			for (Map.Entry<Object, Object> entry : map.entrySet()) {
@@ -108,14 +108,14 @@ public class ChaosInjecter {
 		}
 	}
 
-	private static String getReplacement(String value, HashMap<String, String> replacements) {
+	private static Object getReplacement(String value, HashMap<String, Object> replacements) {
 		if (value.startsWith("$")) {
-			String replacement1 = replacements.get(value);
+			Object replacement1 = replacements.get(value);
 			if (replacement1 != null) {
 				return replacement1;
 			}
 			// map podname to $PODNAME
-			String replacement2 = replacements.get(value.substring(1).toLowerCase());
+			Object replacement2 = replacements.get(value.substring(1).toLowerCase());
 			if (replacement2 != null) {
 				return replacement2;
 			}
@@ -123,25 +123,36 @@ public class ChaosInjecter {
 		return value;
 	}
 
-	public HashMap<String, String> computeReplacements(SystemConfig config, ArrayList<String> placeholders) {
-		HashMap<String, String> replacements = new HashMap<String, String>();
+	public HashMap<String, Object> computeReplacements(SystemConfig config, ArrayList<String> placeholders) {
+		HashMap<String, Object> replacements = new HashMap<String, Object>();
 		for (String placeholder : placeholders) {
 			if (placeholder.equals("$LEADER")) {
-				replacements.put("$LEADER", config.leader);
+				replacements.put("$LEADER", configParse(config.leader));
 			} else if (placeholder.equals("$RANDOMPOD")) {
 				int podsSize = config.pods.size();
 				int randomPodIndex = (int) (Math.random() * podsSize);
 				String randomPod = config.pods.get(randomPodIndex);
-				replacements.put("$RANDOMPOD", randomPod);
+				replacements.put("$RANDOMPOD", configParse(randomPod));
 			} else if (placeholder.equals("$IFACE")) {
-				replacements.put("$IFACE", config.iface);
+				replacements.put("$IFACE", configParse(config.iface));
 			} else if (placeholder.equals("$SERVERPORT")) {
-				replacements.put("$SERVERPORT", Integer.toString(config.serverport));
+				replacements.put("$SERVERPORT", configParse(Integer.toString(config.serverport)));
 			} else if (placeholder.equals("$NAMESPACE")) {
-				replacements.put("$NAMESPACE", config.namespace);
+				replacements.put("$NAMESPACE", configParse(config.namespace));
 			}
 		}
 		return replacements;
+	}
+
+	public static Object configParse(String conf) {
+		// if conf is 'label=value', return a map with key 'label' and value 'value'
+		if (conf.contains("=")) {
+			String[] parts = conf.split("=");
+			HashMap<String, Object> map = new HashMap<String, Object>();
+			map.put(parts[0], parts[1]);
+			return map;
+		}
+		return conf;
 	}
 
 	public ChaosFault initialFault(SystemConfig config, String faultName) throws Exception {
@@ -151,13 +162,13 @@ public class ChaosInjecter {
 		InputStream faultTemplate = new FileInputStream(faultTemplateFile);
 		// parse fault template
 		Yaml yaml = new Yaml();
-		HashMap<String, String> fault = yaml.load(faultTemplate);
-		int duration = Integer.parseInt(fault.get("duration"));
+		HashMap<String, Object> fault = yaml.load(faultTemplate);
+		int duration = Integer.parseInt((String) fault.get("duration"));
 		// find placeholders
 		ArrayList<String> placeholders = new ArrayList<String>();
 		findPlaceholders(fault, placeholders);
 		// compute replacements
-		HashMap<String, String> replacements = computeReplacements(config, placeholders);
+		HashMap<String, Object> replacements = computeReplacements(config, placeholders);
 		// replace placeholders
 		replacePlaceholders(fault, replacements);
 

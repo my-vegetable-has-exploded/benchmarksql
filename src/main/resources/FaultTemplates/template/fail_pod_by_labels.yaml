@@ -1,20 +1,12 @@
-apiVersion: chaosblade.io/v1alpha1
-kind: ChaosBlade
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
 metadata:
   name: fail-pod-by-labels
+  namespace: chaos-testing
 spec:
-  experiments:
-    - scope: pod
-      target: pod
-      action: fail
-      desc: "inject fail image to select pod"
-      matchers:
-        - name: labels
-          value:
-            - "$PODNAME"
-        - name: namespace
-          value:
-            - "$NAMESPACE"
-        - name: evict-count
-          value:
-            - "1"
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - '$NAMESPACE'
+    labelSelectors: '$PODNAME'

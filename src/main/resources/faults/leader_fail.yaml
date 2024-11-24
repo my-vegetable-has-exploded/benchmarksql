@@ -1,16 +1,9 @@
-apiVersion: chaosblade.io/v1alpha1
-kind: ChaosBlade
-metadata: {name: fail-pod-by-labels}
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata: {name: fail-pod-by-labels, namespace: chaos-testing}
 spec:
-  experiments:
-  - scope: pod
-    target: pod
-    action: fail
-    desc: inject fail image to select pod
-    matchers:
-    - name: labels
-      value: [zone1]
-    - name: namespace
-      value: [oceanbase]
-    - name: evict-count
-      value: ['1']
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces: [oceanbase]
+    labelSelectors: {ref-obzone: obcluster-1-zone1}

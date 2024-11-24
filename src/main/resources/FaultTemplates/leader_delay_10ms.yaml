@@ -7,4 +7,4 @@ localport: "$SERVERPORT"
 latency: "10"
 interface: "$IFACE"
 # in milliseconds
-duration: "20000"
+duration: "120s"
