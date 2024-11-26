@@ -138,15 +138,15 @@ public class LoadData {
      * permutation of all 3,000 customers. To do that we set up an array per district with all
      * C_IDs and randomly shuffle each.
      */
-    nextCID = new int[numWarehouses][10][300];
+    nextCID = new int[numWarehouses][10][3000];
     for (int w_idx = 0; w_idx < numWarehouses; w_idx++) {
       for (int d_idx = 0; d_idx < 10; d_idx++) {
-        for (int c_idx = 0; c_idx < 300; c_idx++) {
+        for (int c_idx = 0; c_idx < 3000; c_idx++) {
           nextCID[w_idx][d_idx][c_idx] = c_idx + 1;
         }
-        for (i = 0; i < 300; i++) {
-          int x = rnd.nextInt(0, 299);
-          int y = rnd.nextInt(0, 299);
+        for (i = 0; i < 3000; i++) {
+          int x = rnd.nextInt(0, 2999);
+          int y = rnd.nextInt(0, 2999);
           int tmp = nextCID[w_idx][d_idx][x];
           nextCID[w_idx][d_idx][x] = nextCID[w_idx][d_idx][y];
           nextCID[w_idx][d_idx][y] = tmp;
@@ -319,7 +319,7 @@ public class LoadData {
        * numbers. Within them it will loop trough W_IDs and D_IDs. The C_IDs will be the ones
        * preloaded into the nextCID arrays when this loader was created.
        */
-      if (nextOIDX < 300) {
+      if (nextOIDX < 3000) {
         LoadJob job = new LoadJob();
 
         if (nextOIDX % 100 == 0 && nextDIDX == 0 && nextWIDX == 0) {
@@ -339,7 +339,7 @@ public class LoadData {
             nextWIDX = 0;
             ++nextOIDX;
 
-            if (nextOIDX >= 300) {
+            if (nextOIDX >= 3000) {
               log.info("Loading Orders done");
             }
           }
