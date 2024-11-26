@@ -7,4 +7,4 @@ localport: "$SERVERPORT"
 lantency: "10"
 interface: "$IFACE"
 # in milliseconds
-duration: "200"
+duration: "2000ms"

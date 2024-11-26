@@ -20,23 +20,23 @@ public class InjectTest {
 	public void testInject() {
 		// example properties
 		// # k8scli user@ip
-		// k8scli: "root@133.133.135.56"
-		// namespace: "oceanbase"
-		// iface: "ens6f1"
-		// pods: "zone1, zone2, zone3"
-		// leader: "zone1"
+		// sys.k8scli: "root@133.133.135.56"
+		// sys.namespace: "oceanbase"
+		// sys.iface: "ens6f1"
+		// sys.pods: "zone1, zone2, zone3"
+		// sys.leader: "zone1"
 		// # port of db server
-		// serverport: 2883
-		// faults: "leader_fail.yaml"
+		// sys.serverport: 2883
+		// sys.faults: "leader_fail.yaml"
 
 		Properties p = new Properties();
-		p.setProperty("k8scli", "wy@133.133.135.56");
-		p.setProperty("namespace", "oceanbase");
-		p.setProperty("iface", "ens6f1");
-		p.setProperty("pods", "ref-obzone=obcluster-1-zone1, ref-obzone=obcluster-1-zone1, ref-obzone=obcluster-1-zone1");
-		p.setProperty("leader", "ref-obzone=obcluster-1-zone1");
-		p.setProperty("serverport", "2883");
-		p.setProperty("faults", "leader_fail.yaml");
+		p.setProperty("sys.k8scli", "wy@133.133.135.56");
+		p.setProperty("sys.namespace", "oceanbase");
+		p.setProperty("sys.iface", "ens6f1");
+		p.setProperty("sys.pods", "ref-obzone=obcluster-1-zone1, ref-obzone=obcluster-1-zone1, ref-obzone=obcluster-1-zone1");
+		p.setProperty("sys.leader", "ref-obzone=obcluster-1-zone1");
+		p.setProperty("sys.serverport", "2883");
+		p.setProperty("sys.faults", "leader_fail.yaml");
 
 		// println current path
 		ChaosInjecter injecter = ChaosInjecter.getInstance(null, "src/main/resources/FaultTemplates/",
@@ -62,8 +62,8 @@ public class InjectTest {
 			assertEquals(expected, yamlString);
 
 		} catch (Exception e) {
-			assertTrue(false, e.getMessage());
 			e.printStackTrace();
+			assertEquals("", e.getMessage());
 		}
 	}
 }

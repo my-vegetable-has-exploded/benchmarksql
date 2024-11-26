@@ -6,6 +6,7 @@ import com.github.pgsqlio.benchmarksql.jtpcc.jTPCC;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -114,7 +115,7 @@ public class ChaosInjecter {
 			if (replacement1 != null) {
 				return replacement1;
 			}
-			// map podname to $PODNAME
+			// map $PODNAME to podname
 			Object replacement2 = replacements.get(value.substring(1).toLowerCase());
 			if (replacement2 != null) {
 				return replacement2;
@@ -123,7 +124,7 @@ public class ChaosInjecter {
 		return value;
 	}
 
-	public HashMap<String, Object> computeReplacements(SystemConfig config, ArrayList<String> placeholders) {
+	public HashMap<String, Object> computeReplacements(SystemConfig config, ArrayList<String> placeholders) throws Exception {
 		HashMap<String, Object> replacements = new HashMap<String, Object>();
 		for (String placeholder : placeholders) {
 			if (placeholder.equals("$LEADER")) {
@@ -135,11 +136,11 @@ public class ChaosInjecter {
 				replacements.put("$RANDOMPOD", configParse(randomPod));
 			} else if (placeholder.equals("$IFACE")) {
 				replacements.put("$IFACE", configParse(config.iface));
-			} else if (placeholder.equals("$SERVERPORT")) {
-				replacements.put("$SERVERPORT", configParse(Integer.toString(config.serverport)));
-			} else if (placeholder.equals("$NAMESPACE")) {
-				replacements.put("$NAMESPACE", configParse(config.namespace));
 			}
+		}
+		// extend replacements systemconfig with config.confs
+		for (Map.Entry<String, String> entry : config.confs.entrySet()) {
+			replacements.put("$"+entry.getKey().toUpperCase(), configParse(entry.getValue()));
 		}
 		return replacements;
 	}
@@ -155,6 +156,19 @@ public class ChaosInjecter {
 		return conf;
 	}
 
+	public int durationParse(String duration) throws Exception {
+		// parse duration and return milliseconds
+		if (duration.endsWith("s")) {
+			return Integer.parseInt(duration.substring(0, duration.length() - 1)) * 1000;
+		} else if (duration.endsWith("min")) {
+			return Integer.parseInt(duration.substring(0, duration.length() - 3)) * 60 * 1000;
+		} else if (duration.endsWith("ms")) {
+			return Integer.parseInt(duration.substring(0, duration.length() - 2));
+		} else {
+			throw new Exception("invalid duration: " + duration);
+		}
+	}
+
 	public ChaosFault initialFault(SystemConfig config, String faultName) throws Exception {
 		// read fault description from faultName
 		String faultTemplateFile = templatePath + faultName;
@@ -163,7 +177,7 @@ public class ChaosInjecter {
 		// parse fault template
 		Yaml yaml = new Yaml();
 		HashMap<String, Object> fault = yaml.load(faultTemplate);
-		int duration = Integer.parseInt((String) fault.get("duration"));
+		int duration = durationParse((String) fault.get("duration"));
 		// find placeholders
 		ArrayList<String> placeholders = new ArrayList<String>();
 		findPlaceholders(fault, placeholders);
@@ -175,9 +189,9 @@ public class ChaosInjecter {
 		String chaosTemplateFile = templatePath + "template/" + fault.get("template");
 		InputStream chaosTemplate = new FileInputStream(chaosTemplateFile);
 		HashMap<String, Object> chaos = yaml.load(chaosTemplate);
-		// find placeholders
-		ArrayList<String> chaosPlaceholders = new ArrayList<String>();
-		findPlaceholders(chaos, chaosPlaceholders);
+		// // find placeholders
+		// ArrayList<String> chaosPlaceholders = new ArrayList<String>();
+		// findPlaceholders(chaos, chaosPlaceholders);
 		replacePlaceholders(chaos, fault);
 
 		String chaosData = yaml.dump(chaos);

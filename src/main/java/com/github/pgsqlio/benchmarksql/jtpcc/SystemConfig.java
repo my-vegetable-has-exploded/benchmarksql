@@ -4,6 +4,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.util.Properties;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Enumeration;
 
 public class SystemConfig {
 	private static Logger logger = LogManager.getLogger(SystemConfig.class);
@@ -13,10 +15,12 @@ public class SystemConfig {
 	public String iface;
 	public ArrayList<String> pods;
 	public String leader;
-	public int serverport;
+	public String serverport;
 	public ArrayList<String> faults;
+	public String volumePath;
 	// in mins
 	public int faultTime;
+	public HashMap<String, String> confs = new HashMap<>();
 
 	private String getProp(Properties p, String pName) {
 		String prop = p.getProperty(pName);
@@ -34,21 +38,34 @@ public class SystemConfig {
 
 	public SystemConfig(Properties p) {
 		// get the properties
-		k8scli = getProp(p, "k8scli");
-		namespace = getProp(p, "namespace");
-		iface = getProp(p, "iface");
-		leader = getProp(p, "leader");
-		serverport = Integer.parseInt(getProp(p, "serverport"));
-		String podsStr = getProp(p, "pods");
+		k8scli = getProp(p, "sys.k8scli");
+		namespace = getProp(p, "sys.namespace");
+		iface = getProp(p, "sys.iface");
+		leader = getProp(p, "sys.leader");
+		serverport = getProp(p, "sys.serverport");
+		volumePath = getProp(p, "sys.volumePath");
+		String podsStr = getProp(p, "sys.pods");
 		pods = new ArrayList<String>();
 		for (String pod : podsStr.split(",")){
 			pods.add(pod.strip());
 		}
-		String faultsStr = getProp(p, "faults");
+		String faultsStr = getProp(p, "sys.faults");
 		faults = new ArrayList<String>();
 		for (String fault : faultsStr.split(",")){
 			faults.add(fault.strip());
 		}
-		faultTime = Integer.parseInt(getProp(p, "faulttime", "10"));
+		faultTime = Integer.parseInt(getProp(p, "sys.faulttime", "10"));
+
+		// add all properties start with "sys." to confs, and remove "sys." prefix
+		Enumeration<?> propertyNames = p.propertyNames();
+		while (propertyNames.hasMoreElements()) {
+			String key = (String) propertyNames.nextElement();
+			if (key.startsWith("sys.")) {
+				String value = getProp(p, key);
+				System.err.println(key.substring(4)+" "+value);
+				confs.put(key.substring(4), value);
+				logger.info("system config, {}={}", key.substring(4), value);
+			}
+		}
 	}
 }

@@ -9,29 +9,29 @@ public class SystemConfigTest {
 	@Test
 	public void testSystemConfig() {
 		// example parameters
-		// k8scli: "root@133.133.135.56"
-		// namespace: "oceanbase"
-		// iface: "ens6f1"
-		// pods: "zone1, zone2, zone3"
-		// leader: "zone1"
+		// sys.k8scli: "root@133.133.135.56"
+		// sys.namespace: "oceanbase"
+		// sys.iface: "ens6f1"
+		// sys.pods: "zone1, zone2, zone3"
+		// sys.leader: "zone1"
 		// # port of db server
-		// serverport: 2883
-		// faults: "leader_fail.yaml"
+		// sys.serverport: 2883
+		// sys.faults: "leader_fail.yaml"
 		Properties p = new Properties();
-		p.setProperty("k8scli", "root@133.133.135.56");
-		p.setProperty("namespace", "oceanbase");
-		p.setProperty("iface", "ens6f1");
-		p.setProperty("pods", "zone1, zone2, zone3");
-		p.setProperty("leader", "zone1");
-		p.setProperty("serverport", "2883");
-		p.setProperty("faults", "leader_fail.yaml");
+		p.setProperty("sys.k8scli", "root@133.133.135.56");
+		p.setProperty("sys.namespace", "oceanbase");
+		p.setProperty("sys.iface", "ens6f1");
+		p.setProperty("sys.pods", "zone1, zone2, zone3");
+		p.setProperty("sys.leader", "zone1");
+		p.setProperty("sys.serverport", "2883");
+		p.setProperty("sys.faults", "leader_fail.yaml");
 
 		SystemConfig config = new SystemConfig(p);
 		assertEquals("root@133.133.135.56", config.k8scli);
 		assertEquals("oceanbase", config.namespace);
-		assertEquals("ens6f1", config.iface);
+		assertEquals("ens6f1", config.confs.get("iface"));
 		assertEquals("zone1", config.leader);
-		assertEquals(2883, config.serverport);
+		assertEquals("2883", config.serverport);
 		assertEquals(3, config.pods.size());
 		assertEquals("zone1", config.pods.get(0));
 		assertEquals("zone2", config.pods.get(1));
