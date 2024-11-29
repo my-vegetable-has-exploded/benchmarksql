@@ -142,6 +142,16 @@ public class ChaosInjecter {
 		for (Map.Entry<String, String> entry : config.confs.entrySet()) {
 			replacements.put("$"+entry.getKey().toUpperCase(), configParse(entry.getValue()));
 		}
+		// compute random pod, shuffle pods and insert all with index, set random seed to 0, shuffle pods use random seed 0
+		java.util.Random random = new java.util.Random(0);
+		List<Object> pods = new ArrayList<Object>();
+		for (String pod : config.pods) {
+			pods.add(configParse(pod));
+		}
+		java.util.Collections.shuffle(pods, random);
+		for (int i = 0; i < pods.size(); i++) {
+			replacements.put("$RANDOMPOD" + (i + 1), pods.get(i));
+		}
 		return replacements;
 	}
 
@@ -193,6 +203,8 @@ public class ChaosInjecter {
 		// ArrayList<String> chaosPlaceholders = new ArrayList<String>();
 		// findPlaceholders(chaos, chaosPlaceholders);
 		replacePlaceholders(chaos, fault);
+		// handle rest placeholders by replacements
+		replacePlaceholders(chaos, replacements);
 
 		String chaosData = yaml.dump(chaos);
 		String chaosPath = faultPath + faultName;

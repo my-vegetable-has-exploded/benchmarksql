@@ -1,0 +1,4 @@
+template: "stress_then_kill.yaml"
+duration: "30s"
+workers: 4
+load: 75

@@ -1,0 +1,42 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata:
+  name: stress-then-kill-example
+spec:
+  entry: stress-then-kill 
+  templates:
+    - name: stress-then-kill
+      templateType: Serial
+      deadline: 60s
+      children:
+        - workflow-stress-chaos
+        # - suspending
+        - workflow-kill-chaos
+    # - name: suspending
+    #   templateType: Suspend
+    #   deadline: 10s
+    - name: workflow-kill-chaos
+      templateType: PodChaos
+      # TODO: may need to relax ?
+      deadline: 120s
+      podChaos:
+        action: pod-kill
+        mode: one
+        selector:
+          namespaces:
+            - '$NAMESPACE'
+          labelSelectors: '$RANDOMPOD1'
+    - name: workflow-stress-chaos
+      templateType: StressChaos
+      # TODO: may need to relax ?
+      deadline: '$DURATION'
+      stressChaos:
+        mode: one
+        selector:
+          namespaces: 
+            - '$NAMESPACE'
+          labelSelectors: '$RANDOMPOD2'
+        stressors:
+          cpu:
+            workers: $WORKERS
+            load: $LOAD

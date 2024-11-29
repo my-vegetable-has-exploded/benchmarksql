@@ -17,7 +17,7 @@ import java.io.StringWriter;
 public class InjectTest {
 
 	@Test
-	public void testInject() {
+	public void testInject() throws Exception {
 		// example properties
 		// # k8scli user@ip
 		// sys.k8scli: "root@133.133.135.56"
@@ -33,7 +33,7 @@ public class InjectTest {
 		p.setProperty("sys.k8scli", "wy@133.133.135.56");
 		p.setProperty("sys.namespace", "oceanbase");
 		p.setProperty("sys.iface", "ens6f1");
-		p.setProperty("sys.pods", "ref-obzone=obcluster-1-zone1, ref-obzone=obcluster-1-zone1, ref-obzone=obcluster-1-zone1");
+		p.setProperty("sys.pods", "ref-obzone=obcluster-1-zone1, ref-obzone=obcluster-1-zone2, ref-obzone=obcluster-1-zone3");
 		p.setProperty("sys.leader", "ref-obzone=obcluster-1-zone1");
 		p.setProperty("sys.serverport", "2883");
 		p.setProperty("sys.faults", "leader_fail.yaml");
@@ -61,9 +61,58 @@ public class InjectTest {
 			String expected = String.format("apiVersion: chaos-mesh.org/v1alpha1\nkind: PodChaos\nmetadata:\n  name: fail-pod-by-labels\n  namespace: chaos-testing\nspec:\n  action: pod-kill\n  mode: one\n  selector:\n    namespaces:\n    - oceanbase\n    labelSelectors:\n      ref-obzone: obcluster-1-zone1\n");
 			assertEquals(expected, yamlString);
 
+			fault = injecter.initialFault(config, "cpu75%_then_kill_another.yaml");
+			faultPath = fault.file;
+			input = new FileInputStream(faultPath);
+			describe = yaml.load(input);
+			writer = new StringWriter();
+			yamlDumper.dump(describe, writer);
+			yamlString = writer.toString();
+
+			expected = "apiVersion: chaos-mesh.org/v1alpha1\n" +
+                "kind: Workflow\n" +
+                "metadata:\n" +
+                "  name: stress-then-kill-example\n" +
+                "spec:\n" +
+                "  entry: stress-then-kill\n" +
+                "  templates:\n" +
+                "  - name: stress-then-kill\n" +
+                "    templateType: Serial\n" +
+                "    deadline: 60s\n" +
+                "    children:\n" +
+                "    - workflow-stress-chaos\n" +
+                "    - workflow-kill-chaos\n" +
+                "  - name: workflow-kill-chaos\n" +
+                "    templateType: PodChaos\n" +
+                "    deadline: 120s\n" +
+                "    podChaos:\n" +
+                "      action: pod-kill\n" +
+                "      mode: one\n" +
+                "      selector:\n" +
+                "        namespaces:\n" +
+                "        - oceanbase\n" +
+                "        labelSelectors:\n" +
+                "          ref-obzone: obcluster-1-zone3\n" +
+                "  - name: workflow-stress-chaos\n" +
+                "    templateType: StressChaos\n" +
+                "    deadline: 30s\n" +
+                "    stressChaos:\n" +
+                "      mode: one\n" +
+                "      selector:\n" +
+                "        namespaces:\n" +
+                "        - oceanbase\n" +
+                "        labelSelectors:\n" +
+                "          ref-obzone: obcluster-1-zone2\n" +
+                "      stressors:\n" +
+                "        cpu:\n" +
+                "          workers: 4\n" +
+                "          load: 75\n";
+
+			assertEquals(expected, yamlString);
+
 		} catch (Exception e) {
 			e.printStackTrace();
-			assertEquals("", e.getMessage());
+			throw e;
 		}
 	}
 }

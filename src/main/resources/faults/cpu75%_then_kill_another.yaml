@@ -1,0 +1,29 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata: {name: stress-then-kill-example}
+spec:
+  entry: stress-then-kill
+  templates:
+  - name: stress-then-kill
+    templateType: Serial
+    deadline: 60s
+    children: [workflow-stress-chaos, workflow-kill-chaos]
+  - name: workflow-kill-chaos
+    templateType: PodChaos
+    deadline: 120s
+    podChaos:
+      action: pod-kill
+      mode: one
+      selector:
+        namespaces: [oceanbase]
+        labelSelectors: {ref-obzone: obcluster-1-zone3}
+  - name: workflow-stress-chaos
+    templateType: StressChaos
+    deadline: 30s
+    stressChaos:
+      mode: one
+      selector:
+        namespaces: [oceanbase]
+        labelSelectors: {ref-obzone: obcluster-1-zone2}
+      stressors:
+        cpu: {workers: 4, load: 75}
