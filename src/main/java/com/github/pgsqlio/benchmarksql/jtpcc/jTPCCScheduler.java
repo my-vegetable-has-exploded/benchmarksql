@@ -45,7 +45,7 @@ public class jTPCCScheduler implements Runnable {
     this.random = new Random(System.currentTimeMillis());
     this.avl_lock = new Object();
     this.dummy_result = new jTPCCResult();
-	this.faultMin = gdata.sysConfig.faultTime + gdata.rampupMins;
+	this.faultMin = gdata.sysConfig.faultTime;
   }
 
   public void setFaultInjectTime(long faultInjectTime){
@@ -72,7 +72,7 @@ public class jTPCCScheduler implements Runnable {
 
     for (;;) {
 	  now = System.currentTimeMillis();
-	  if(!faultInjected && now >= faultMin*60000 + start_ms) {
+	  if(!faultInjected && now >= faultMin*60000 + gdata.result_begin) {
 		faultInjected = true;
 		new Thread(() -> {
 		  try {
