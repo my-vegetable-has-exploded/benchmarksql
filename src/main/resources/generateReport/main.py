@@ -137,6 +137,7 @@ def generate_html(result, template, os_metrics):
         'runinfo': result.runinfo,
 		'faultinfo': result.faultinfo,
         'summary': summary_data(result),
+		'scenario': result.scenario_name,
         'properties': result.properties,
         'mix_warn': False,
         'rbk_warn': False,
