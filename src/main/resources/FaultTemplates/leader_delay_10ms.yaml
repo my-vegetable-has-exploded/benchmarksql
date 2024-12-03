@@ -4,7 +4,7 @@ podname: "$LEADER"
 namespace: "$NAMESPACE"
 localport: "$SERVERPORT"
 # in milliseconds
-latency: "10"
+latency: "10s"
 interface: "$IFACE"
 # in milliseconds
 duration: "120s"

@@ -4,7 +4,7 @@ podname: "$RANDOMPOD"
 namespace: "$NAMESPACE"
 localport: "$SERVERPORT"
 # in milliseconds
-lantency: "10"
+lantency: "10s"
 interface: "$IFACE"
 # in milliseconds
 duration: "2000ms"
