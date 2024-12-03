@@ -51,6 +51,7 @@ class bmsqlResult:
         self.rto = self.rto(self.trace_fname)
         self.rpo = self.rpo(self.trace_fname, txn_fname)
         self.stage_latency()
+        self.stage_throughput()
 
         # ----
         # Load the other CSV files into dicts of arrays.
@@ -103,6 +104,8 @@ class bmsqlResult:
         prop_fname = os.path.join(resdir, 'run.properties')
         with open(prop_fname, 'r') as fd:
             props = fd.read()
+        # parse the properties file, and find scenario name, if no scenario name, set it to uncertain
+        self.scenario_name = re.search(r'scenario\s*=\s*(.*)', props, re.M).group(1) if re.search(r'scenario\s*=\s*(.*)', props, re.M) else "uncertain"
         self.properties = re.sub(r'(password\s*=\s*).*$', r'\1********',
                                  props, flags = re.M)
 
@@ -227,8 +230,35 @@ class bmsqlResult:
                after_fault_latency.append(int(row["end"]) - int(row["start"]))
        print("Average latency before fault: ", sum(before_fault_latency) / len(before_fault_latency) , " ms")
        if len(fault_duration_latency) > 0:
-           print("Average latency during fault: ", sum(fault_duration_latency) / len(fault_duration_latency) , " ms")
-       print("Average latency after fault: ", sum(after_fault_latency) / len(after_fault_latency) , " ms")
+            # compute the average latency during fault and change rate of latency during fault
+            print("Average latency during fault: ", sum(fault_duration_latency) / len(fault_duration_latency) , " ms",  " change rate: ", (sum(fault_duration_latency) / len(fault_duration_latency) - sum(before_fault_latency) / len(before_fault_latency)) / (sum(before_fault_latency) / len(before_fault_latency)) * 100, " %")
+       print("Average latency after fault: ", sum(after_fault_latency) / len(after_fault_latency) , " ms", " change rate: ", (sum(after_fault_latency) / len(after_fault_latency) - sum(before_fault_latency) / len(before_fault_latency)) / (sum(before_fault_latency) / len(before_fault_latency)) * 100, " %")
+    
+    def stage_throughput(self):
+        """
+        Print the average throughput for different stage, including last minute before the fault, duration time of fault, and average throughput for first minute after the fault
+        """
+        if self.faultinfo == {}:
+            print("No fault found")
+            return 
+        fault_time = int(self.faultinfo["start"])
+        before_fault = (fault_time - 60000, fault_time)
+        fault_duration = (fault_time, fault_time + int(self.faultinfo["duration"]))
+        after_fault = (fault_time + int(self.faultinfo["duration"]), fault_time + int(self.faultinfo["duration"]) + 60000)
+        before_fault_throughput = 0
+        fault_duration_throughput = 0
+        after_fault_throughput = 0
+        for row in self.txn_trace:
+            if before_fault[0] <= int(row["start"]) < before_fault[1]:
+                before_fault_throughput += 1
+            elif fault_duration[0] <= int(row["start"]) < fault_duration[1]:
+                fault_duration_throughput += 1
+            elif after_fault[0] <= int(row["start"]) < after_fault[1]:
+                after_fault_throughput += 1
+        print("Average throughput before fault: ", before_fault_throughput / 60 , " txn/s")
+        if int(self.faultinfo["duration"]) > 0:
+            print("Average throughput during fault: ", 1000 * fault_duration_throughput / int(self.faultinfo["duration"]), " txn/s", " change rate: ", ((1000 * fault_duration_throughput / int(self.faultinfo["duration"])) - (before_fault_throughput / 60)) / (before_fault_throughput / 60) * 100, " %")
+        print("Average throughput after fault: ", after_fault_throughput / 60 , " txn/s", " change rate: ", ((after_fault_throughput / 60) - (before_fault_throughput / 60)) / (before_fault_throughput / 60) * 100, " %")
 
     def rto(self, trace_file):
         """
