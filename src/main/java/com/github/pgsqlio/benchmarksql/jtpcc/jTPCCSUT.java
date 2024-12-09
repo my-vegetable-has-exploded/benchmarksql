@@ -159,7 +159,7 @@ public class jTPCCSUT {
 		boolean faultHappend = false;
 
 		// transaction id, (sut_id<<32) + txns
-		long txn_id = (t_id << 32) + txns;
+		long txn_id = ((long)t_id << 32) + txns;
 		txns++;
 		tdata.txn_id = txn_id;
 

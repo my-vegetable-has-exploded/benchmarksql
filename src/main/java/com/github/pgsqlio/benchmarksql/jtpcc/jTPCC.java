@@ -633,7 +633,6 @@ public class jTPCC {
 	  }
 	  txnlogCSV.flush();
 	  txnlogStmt.close();
-	  dbConn.commit();
 	  dbConn.close();
 	} catch (Exception ex) {
 	  log.error("main, Unable to read bmsql_txnlog");
