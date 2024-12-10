@@ -1,9 +1,8 @@
-template: "delay_pod_network_by_labels.yaml"
+template: "loss_pod_network_by_labels.yaml"
 podname: "$LEADER"
 namespace: "$NAMESPACE"
 localport: "$SERVERPORT"
-# in milliseconds
-latency: "10s"
-interface: "$IFACE"
+# network loss percent
+loss: "80"
 # in milliseconds
 duration: "60s"

@@ -1,0 +1,15 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: reorder
+spec:
+  action: reorder
+  mode: one
+  selector:
+    namespaces:
+      - '$NAMESPACE'
+    labelSelectors: '$PODNAME'
+  reorder:
+    reorder: '$REORDER'
+    gap: '$GAP'
+  duration: '$DURATION'

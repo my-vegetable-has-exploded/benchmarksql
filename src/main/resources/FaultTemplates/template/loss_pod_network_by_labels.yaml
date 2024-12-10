@@ -1,0 +1,14 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: loss
+spec:
+  action: loss
+  mode: one
+  selector:
+    namespaces:
+      - '$NAMESPACE'
+    labelSelectors: '$PODNAME'
+  loss:
+    loss: '$LOSS'
+  duration: '$DURATION'
