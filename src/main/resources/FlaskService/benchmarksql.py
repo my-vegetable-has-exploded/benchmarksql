@@ -41,6 +41,10 @@ class BenchmarkSQL:
         # and try /service_data.
         # ----
         self.data_dir = os.path.abspath(os.path.join(os.path.curdir, 'service_data'))
+        # ----
+        # faults_dis is the directory where the fault templates are stored.
+        # ---- 
+        self.faults_dis = os.path.abspath(os.path.join(os.path.curdir, 'FaultTemplates'))
         if os.path.isdir(self.data_dir):
             print("using existing", self.data_dir)
         else:
@@ -282,6 +286,20 @@ class BenchmarkSQL:
         self.current_job.start()
         self.lock.release()
 
+    def run_allfaults(self):
+        self.lock.acquire()
+        if self.current_job_type != 'IDLE':
+            self.lock.release()
+            return
+
+        run_id = self.status_data['run_count'] + 1
+
+        self.current_job = RunAllFaults(self, run_id)
+        self.current_job_output = ""
+        self.current_job_start = time.time()
+        self.current_job.start()
+        self.lock.release()
+        
     def run_build(self):
         self.lock.acquire()
         if self.current_job_type != 'IDLE':
@@ -398,6 +416,136 @@ class RunBenchmark(threading.Thread):
 
         else:
             self.bench.add_job_output("\nBenchmarkSQL run complete\n")
+
+        result_log = os.path.join(result_dir, 'console.log')
+        with codecs.open(result_log, 'w', encoding='utf8') as fd:
+            fd.write(self.bench.current_job_output)
+
+class RunAllFaults(threading.Thread):
+    def __init__(self, bench, run_id):
+        threading.Thread.__init__(self)
+
+        self.bench = bench
+        self.run_id = run_id
+        self.start_run_id = run_id
+        self.end_run_id = 0
+        self.proc = None
+
+    def run(self):
+        fault_files = [f for f in os.listdir(self.bench.faults_dis) if os.path.isfile(os.path.join(self.bench.faults_dis, f))]
+        for fault_file in fault_files:
+            self.bench.status_data['run_count'] += 1
+            self.run_each(fault_file)
+            self.run_id += 1
+        self.end_run_id = self.run_id
+        rpos, rtos = [], []
+        # read metrics from result_dir and compute average result of metrics
+        for run_id in range(self.start_run_id, self.end_run_id):
+            result_dir = os.path.join(self.bench.data_dir, "result_{0:06d}".format(run_id))
+            # read rto and rpo from result_dir/data/metrics.csv
+            with open(os.path.join(result_dir, 'data', 'metrics.csv'), 'r') as fd:
+                csv_reader = csv.DictReader(fd)
+                for row in csv_reader:
+                    rpos.append(float(row['rpo']))
+                    rtos.append(float(row['rto']))
+        # compute average rpo and rto
+        avg_rpo = sum(rpos) / (self.end_run_id - self.start_run_id)
+        avg_rto = sum(rtos) / (self.end_run_id - self.start_run_id)
+        line = "Average RPO: {0}, Average RTO: {1}\n".format(avg_rpo, avg_rto)
+        self.bench.add_job_output(line)
+
+    def run_each(self, fault_file):
+        last_props = os.path.join(self.bench.data_dir, 'last.properties')
+        run_props = os.path.join(self.bench.data_dir, 'run.properties')
+        result_dir = os.path.join(self.bench.data_dir, "result_{0:06d}".format(self.run_id))
+
+            # update bench.status_data['results']
+        self.bench.status_data['results'] = [{
+                'run_id':   self.run_id,
+                'name':     "result_{0:06d}".format(self.run_id),
+                'start':    time.asctime(),
+                'state':    'RUN',
+            }] + self.bench.status_data['results']
+        self.bench.save_status()
+        self.bench.current_job_type = 'RUNALL'
+        self.bench.current_job_id = self.run_id
+        self.bench.current_job_name = "result_{0:06d}".format(self.run_id)
+        self.bench.save_status()
+
+        origin_props = jproperties.Properties()
+        with open(last_props, 'rb') as fd:
+            origin_props.load(fd, 'utf-8')
+        
+        # set sys.faults = $fault_file, and resultDirectory = $result_dir and scenario=$fault_file
+        origin_props['sys.faults'] = fault_file
+        origin_props['resultDirectory'] = result_dir
+        origin_props['scenario'] = fault_file
+        with open(run_props, 'wb') as fd:
+            origin_props.store(fd, 'utf-8')
+        with open(os.path.join(self.bench.data_dir, 'run_seq.dat'), 'w') as fd:
+            fd.write(str(self.run_id - 1) + '\n')
+
+        cmd = ['./runBenchmark.sh', run_props, ]
+        self.proc = subprocess.Popen(cmd,
+                                     stdout = subprocess.PIPE,
+                                     stderr = subprocess.STDOUT,
+                                     stdin = None,
+                                     preexec_fn = os.setsid)
+        while True:
+            line = self.proc.stdout.readline().decode('utf-8')
+            if len(line) == 0:
+                break
+            self.bench.add_job_output(line)
+        self.proc.wait()
+        rc = self.proc.returncode
+        self.proc = None
+
+        if rc != 0:
+            self.bench.add_job_output("\n\nBenchmarkSQL had exit code {0}\n".format(rc))
+
+        # ----
+        # Read the current run properties and parse them this time.
+        # We need to get the reportScript= property from that.
+        # ----
+        jprop = jproperties.Properties()
+        with open(run_props, "rb") as fd:
+            jprop.load(fd, 'utf-8')
+        if 'reportScript' in jprop:
+
+            self.bench.add_job_output("\nBenchmarkSQL run complete - generating report\n")
+            cmd = shlex.split(jprop['reportScript'].data)
+            cmd.append('--resultdir')
+            cmd.append(result_dir)
+            self.proc = subprocess.Popen(cmd,
+                                         stdout = subprocess.PIPE,
+                                         stderr = subprocess.STDOUT,
+                                         stdin = None,
+                                         preexec_fn = os.setsid)
+            while True:
+                line = self.proc.stdout.readline().decode('utf-8')
+                if len(line) == 0:
+                    break
+                self.bench.add_job_output(line)
+            self.proc.wait()
+            rc = self.proc.returncode
+            self.proc = None
+
+            if rc != 0:
+                self.bench.add_job_output("\n\nreportScript had exit code {0} - report may be incomplete\n".format(rc))
+
+        else:
+            self.bench.add_job_output("\nBenchmarkSQL run complete\n")
+        
+        for entry in self.bench.status_data['results']:
+            if entry['name'] == self.bench.current_job_name:
+                if entry['state'] == 'RUN':
+                    entry['state'] = 'FINISHED'
+                break
+        self.bench.current_job = None
+        self.bench.current_job_id = 0
+        self.bench.current_job_type = 'IDLE'
+        self.bench.current_job_name = ""
+        self.bench.save_status()
 
         result_log = os.path.join(result_dir, 'console.log')
         with codecs.open(result_log, 'w', encoding='utf8') as fd:

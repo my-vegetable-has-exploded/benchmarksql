@@ -74,6 +74,62 @@ class bmsqlPlot:
             return buf.getvalue()
         return base64.b64encode(buf.getvalue().encode('utf-8')).decode('utf-8')
 
+	# plot every interval seconds
+    def tpmc_svg_interval(self, interval=5, b64encode = True):
+  
+        fig = pyplot.figure(figsize = self.FIGSIZE)
+
+        h = [Size.Fixed(1.2), Size.Scaled(1.), Size.Fixed(.2)]
+        v = [Size.Fixed(0.7), Size.Scaled(1.), Size.Fixed(.5)]
+
+        divider = Divider(fig, (0.0, 0.0, 1., 1.), h, v, aspect=False)
+        plt = Axes(fig, divider.get_position())
+        plt.set_axes_locator(divider.new_locator(nx=1, ny=1))
+
+        fig.add_axes(plt)
+
+        result = self.result
+        runinfo = result.runinfo
+
+        # ----
+        # The X limits are -rampupMins, runMins
+        # ----
+        plt.set_xlim(-int(runinfo['rampupMins'])*60//interval, int(runinfo['runMins'])*60//interval)
+        plt.axvspan(-int(runinfo['rampupMins'])*60//interval, 0,
+                    facecolor = '0.2', alpha = 0.1)
+
+        # ----
+        # offset the timestamps by -rampupMins so that the graph
+        # starts with negative minutes elapsed and switches to
+        # positive when the measurement begins.
+        # ----
+        offset = (int(runinfo['rampupMins'])) * 60.0
+
+        total_intervals = int(runinfo['rampupMins'])*60//interval + int(runinfo['runMins'])*60//interval
+        startTS = (int(runinfo['startTS']))
+        txn_stat = [0 for i in range(total_intervals)]
+        x = range(-int(runinfo['rampupMins'])*60//interval, int(runinfo['runMins'])*60//interval, 1)
+        for row in result.txn_trace:
+            end = (int(row['end']) - startTS)//(1000*interval)
+            if end >=0 and end < total_intervals:
+                txn_stat[end]+=1
+
+        # ----
+        # Plot the NOPM and add all the decorations
+        # ----
+        plt.plot(x, txn_stat, 'b')
+        plt.set_title("NEW_ORDER Transactions per {} seonds".format(interval))
+        plt.set_xlabel("Elapsed Seconds")
+        plt.set_ylabel("QPS")
+        plt.grid()
+
+        buf = io.StringIO()
+        pyplot.savefig(buf, format = 'svg')
+
+        if not b64encode:
+            return buf.getvalue()
+        return base64.b64encode(buf.getvalue().encode('utf-8')).decode('utf-8')
+
     def delay_avg_svg(self, ttype, b64encode = True):
         max_ms = self.result.percentile(ttype, 0.99) * 1100.0
         fig = pyplot.figure(figsize = self.FIGSIZE)

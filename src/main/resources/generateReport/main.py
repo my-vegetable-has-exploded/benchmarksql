@@ -146,6 +146,7 @@ def generate_html(result, template, os_metrics):
         'tpm_percent': '{:.2f}'.format((result.tpm_c() * 100)
             / (12.86 * float(result.runinfo['runWarehouses']))),
         'tpmc_svg': plot.tpmc_svg,
+        # 'tpmc_svg': plot.tpmc_svg_interval,
         'delay_avg_svg': plot.delay_avg_svg,
         'delay_max_svg': plot.delay_max_svg,
         'metric_svg': plot.metric_svg,

@@ -50,6 +50,14 @@ class bmsqlResult:
 
         self.rto = self.rto(self.trace_fname)
         self.rpo = self.rpo(self.trace_fname, txn_fname)
+
+        # write rto and rpo result into metrics.csv
+        metrics_fname = os.path.join(self.datadir, 'metrics.csv')
+        with open(metrics_fname, 'w', newline='') as fd:
+            wrt = csv.writer(fd)
+            wrt.writerow(['rto', 'rpo'])
+            wrt.writerow([self.rto, self.rpo])
+        
         self.stage_latency()
         self.stage_throughput()
 
@@ -301,6 +309,9 @@ class bmsqlResult:
 
         # get all RTO intervals and group by thread_id, for overlapped intervals of the same thread_id, merge them
         intervals = con.execute(rto_query).fetchall()
+
+		# get threads number
+        threads_num = con.execute("SELECT COUNT(DISTINCT (txn_id >> 32)) FROM transactions;").fetchone()[0]
         con.close()
 
         merged_intervals = {}
@@ -323,7 +334,8 @@ class bmsqlResult:
         interrupt_time = {}
         for thread_id, intervals in merged_intervals.items():
             interrupt_time[thread_id] = sum([interval[1] - interval[0] for interval in intervals])
-        avg_interrupt_time = sum(interrupt_time.values()) / len(interrupt_time)
+
+        avg_interrupt_time = sum(interrupt_time.values()) / int(threads_num)
 
         # print all interrupt intervals
         for thread_id, intervals in merged_intervals.items():

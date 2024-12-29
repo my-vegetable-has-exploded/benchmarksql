@@ -40,6 +40,11 @@ def index():
             bench.save_properties(form['properties'])
             bench.run_benchmark()
             return flask.redirect(flask.url_for("index"))
+		
+        elif form['action'] == 'RUNALL' and state == 'IDLE':
+            bench.save_properties(form['properties'])
+            bench.run_allfaults()
+            return flask.redirect(flask.url_for("index"))
 
         elif form['action'] == 'BUILD' and state == 'IDLE':
             bench.save_properties(form['properties'])
