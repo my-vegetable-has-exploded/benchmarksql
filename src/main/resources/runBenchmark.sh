@@ -17,7 +17,7 @@ source ./funcs.sh $1
 setCP || exit 1
 
 myOPTS="-Dprop=$1 -DrunID=${SEQ}"
-myOPTS="${myOPTS} -Djava.security.egd=file:/dev/./urandom"
+myOPTS="${myOPTS} -Djava.security.egd=file:/dev/./urandom -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
 
 java -cp "$myCP" $myOPTS com.github.pgsqlio.benchmarksql.jtpcc.jTPCC &
 PID=$!
