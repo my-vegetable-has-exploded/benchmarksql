@@ -291,22 +291,22 @@ public class jTPCCMonkey {
 
           case jTPCCTData.TT_PAYMENT:
             generatePayment(tdata);
-            key_mean = 3.0;
+            key_mean = 1.0;
             break;
 
           case jTPCCTData.TT_ORDER_STATUS:
             generateOrderStatus(tdata);
-            key_mean = 2.0;
+            key_mean = 1.0;
             break;
 
           case jTPCCTData.TT_STOCK_LEVEL:
             generateStockLevel(tdata);
-            key_mean = 2.0;
+            key_mean = 1.0;
             break;
 
           case jTPCCTData.TT_DELIVERY:
             generateDelivery(tdata);
-            key_mean = 2.0;
+            key_mean = 1.0;
             break;
 
           default:
@@ -327,12 +327,15 @@ public class jTPCCMonkey {
         think_time *= jTPCC.thinkTimeMultiplier;
         key_time *= jTPCC.keyingTimeMultiplier;
 
+		think_time = randomInt(0, (long) think_time * 1000);
+		key_time = randomInt(0, (long) key_time * 1000);
+
         /*
          * Set up the terminal data header fields. The Transaction due time is based on the last
          * transactions end time. This eliminates delays caused bu the monkeys not reading or typing
          * at infinite speed.
          */
-        tdata.trans_due = tdata.trans_end + (long) ((think_time + key_time) * 1000.0);
+        tdata.trans_due = tdata.trans_end + (long) (think_time + key_time);
         tdata.trans_start = 0;
         tdata.trans_end = 0;
         tdata.trans_error = false;
