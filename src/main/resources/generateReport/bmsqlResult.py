@@ -320,17 +320,17 @@ class bmsqlResult:
         # compute average latency of successful transactions before fault but after warmup
         runinfo = self.runinfo
         start_ts = int(runinfo["startTS"])
-        warmup_ts = start_ts + int(runinfo["rampupMins"]) * 1000
+        warmup_ts = start_ts + int(runinfo["rampupMins"]) * 60 * 1000
         fault_start_ts = int(self.faultinfo["start"])
         average_latency = con.execute("""
             SELECT AVG(transactions.end - transactions.start) FROM transactions WHERE transactions.start >= """ + str(warmup_ts) + """ AND transactions.start < """ + str(fault_start_ts) + """ AND error = 0 AND rollback = 0;
         """).fetchone()[0]
     
-        # select a candidate fault start time, which is the first transaction end time after the fault start time and there is no successful transaction after it for 5*average_latency
+        # select a candidate fault start time, which is the first transaction end time after the fault start time (assuming fault happend in 5s after fault time) and there is no successful transaction after it for 5*average_latency
         sorted_txn_trace = sorted(self.txn_trace, key=lambda x: int(x["end"]))
         interruptted = False
         for (row, row_next) in zip(sorted_txn_trace[:-1], sorted_txn_trace[1:]):
-            if int(row["end"]) >= fault_start_ts and int(row_next["end"]) - int(row["end"]) > 5 * average_latency:
+            if int(row["end"]) >= fault_start_ts and int(row["end"]) <= (fault_start_ts + 5 * 1000) and int(row_next["end"]) - int(row["end"]) > 5 * average_latency:
                 fault_start_ts = int(row["end"])
                 interruptted = True
                 break
