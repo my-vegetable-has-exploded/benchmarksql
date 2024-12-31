@@ -285,74 +285,75 @@ class bmsqlResult:
         con.execute("""
             CREATE TABLE transactions AS SELECT * FROM read_csv_auto('""" + trace_file + """');""")
 
-        # find the fault start time and recovery end time
-        # step1: find all transactions whose result is error or rollback and record end time as possible fault start time, the txn_id >> 32 is the thread id
-		# CREATE TEMP TABLE error_transactions AS SELECT txn_id >> 32 AS thread_id ,transactions.start AS start_time, transactions.end AS end_time FROM transactions WHERE error = 1;
-		# step2: find all sucessful transactions and record its thread_id and start time and end time
-		# CREATE TEMP TABLE successful_transactions AS SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time FROM transactions WHERE error = 0 AND rollback = 0;
-        # step3: find the first transaction after the fault start time that is not error or rollback and record end time as possible recovery end time for each thread in error_transactions, the fault start time and recovery end time pair is  rto interval
-		# CREATE TEMP TABLE recovery_interval AS SELECT t.thread_id, t.end_time as fault_start, st.end_time as recovery_end FROM error_transactions t ASOF JOIN successful_transactions st ON t.thread_id = st.thread_id AND t.end_time < st.end_time;
-        rto_query = """
-            WITH successful_transactions AS (
-				SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time
-				FROM transactions
-				WHERE error = 0 AND rollback = 0
-            ),
-			error_transactions AS (
-				SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time
-				FROM transactions
-				WHERE error = 1 OR rollback = 1
-            )
-			SELECT t.thread_id, t.end_time as fault_start, st.end_time as recovery_end
-			FROM error_transactions t
-			ASOF JOIN successful_transactions st
-			ON t.thread_id = st.thread_id AND t.end_time < st.end_time;
-        """
+        # # find the fault start time and recovery end time
+        # # step1: find all transactions whose result is error or rollback and record end time as possible fault start time, the txn_id >> 32 is the thread id
+		# # CREATE TEMP TABLE error_transactions AS SELECT txn_id >> 32 AS thread_id ,transactions.start AS start_time, transactions.end AS end_time FROM transactions WHERE error = 1;
+		# # step2: find all sucessful transactions and record its thread_id and start time and end time
+		# # CREATE TEMP TABLE successful_transactions AS SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time FROM transactions WHERE error = 0 AND rollback = 0;
+        # # step3: find the first transaction after the fault start time that is not error or rollback and record end time as possible recovery end time for each thread in error_transactions, the fault start time and recovery end time pair is  rto interval
+		# # CREATE TEMP TABLE recovery_interval AS SELECT t.thread_id, t.end_time as fault_start, st.end_time as recovery_end FROM error_transactions t ASOF JOIN successful_transactions st ON t.thread_id = st.thread_id AND t.end_time < st.end_time;
+        # rto_query = """
+        #     WITH successful_transactions AS (
+		# 		SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time
+		# 		FROM transactions
+		# 		WHERE error = 0 AND rollback = 0
+        #     ),
+		# 	error_transactions AS (
+		# 		SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time
+		# 		FROM transactions
+		# 		WHERE error = 1 OR rollback = 1
+        #     )
+		# 	SELECT t.thread_id, t.end_time as fault_start, st.end_time as recovery_end
+		# 	FROM error_transactions t
+		# 	ASOF JOIN successful_transactions st
+		# 	ON t.thread_id = st.thread_id AND t.end_time < st.end_time;
+        # """
 
-        # get all RTO intervals and group by thread_id, for overlapped intervals of the same thread_id, merge them
-        intervals = con.execute(rto_query).fetchall()
+        # # get all RTO intervals and group by thread_id, for overlapped intervals of the same thread_id, merge them
+        # intervals = con.execute(rto_query).fetchall()
 
 		# get threads number
         threads_num = con.execute("SELECT COUNT(DISTINCT (txn_id >> 32)) FROM transactions;").fetchone()[0]
 
-        if len(intervals) == 0:
-            # compute average latency of successful transactions before fault but after warmup
-            runinfo = self.runinfo
-            start_ts = int(runinfo["startTS"])
-            warmup_ts = start_ts + int(runinfo["rampupMins"]) * 1000
-            fault_start_ts = int(self.faultinfo["start"])
-            average_latency = con.execute("""
-                SELECT AVG(transactions.end - transactions.start) FROM transactions WHERE transactions.start >= """ + str(warmup_ts) + """ AND transactions.start < """ + str(fault_start_ts) + """ AND error = 0 AND rollback = 0;
-            """).fetchone()[0]
+        intervals = []
+
+        # compute average latency of successful transactions before fault but after warmup
+        runinfo = self.runinfo
+        start_ts = int(runinfo["startTS"])
+        warmup_ts = start_ts + int(runinfo["rampupMins"]) * 1000
+        fault_start_ts = int(self.faultinfo["start"])
+        average_latency = con.execute("""
+            SELECT AVG(transactions.end - transactions.start) FROM transactions WHERE transactions.start >= """ + str(warmup_ts) + """ AND transactions.start < """ + str(fault_start_ts) + """ AND error = 0 AND rollback = 0;
+        """).fetchone()[0]
+    
+        # select a candidate fault start time, which is the first transaction end time after the fault start time and there is no successful transaction after it for 5*average_latency
+        sorted_txn_trace = sorted(self.txn_trace, key=lambda x: int(x["end"]))
+        interruptted = False
+        for (row, row_next) in zip(sorted_txn_trace[:-1], sorted_txn_trace[1:]):
+            if int(row["end"]) >= fault_start_ts and int(row_next["end"]) - int(row["end"]) > 5 * average_latency:
+                fault_start_ts = int(row["end"])
+                interruptted = True
+                break
         
-            # select a candidate fault start time, which is the first transaction end time after the fault start time and there is no successful transaction after it for 5*average_latency
-            sorted_txn_trace = sorted(self.txn_trace, key=lambda x: int(x["end"]))
-            interruptted = False
-            for (row, row_next) in zip(sorted_txn_trace[:-1], sorted_txn_trace[1:]):
-                if int(row["end"]) >= fault_start_ts and int(row_next["end"]) - int(row["end"]) > 5 * average_latency:
-                    fault_start_ts = int(row["end"])
-                    interruptted = True
-                    break
-            
-            if interruptted == True:
-                # use the fault start time to compute RTO
-                # find the first transaction after the fault start time that is not error or rollback and record end time as possible recovery end time, the fault start time and recovery end time pair is  rto interval
-                rto_query = """
-                    WITH successful_transactions AS (
-        				SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time
-        				FROM transactions
-        				WHERE error = 0 AND rollback = 0
-                    ),
-                   thread_ids AS (
-                        SELECT DISTINCT txn_id >> 32 AS thread_id, """ + str(fault_start_ts) + """ as fault_start
-                        FROM transactions
-                   )
-                   SELECT t.thread_id, t.fault_start, st.end_time as recovery_end
-                   FROM thread_ids t
-                   ASOF JOIN successful_transactions st
-                   ON t.thread_id = st.thread_id AND t.fault_start < st.end_time;
-                """
-                intervals = con.execute(rto_query).fetchall()
+        if interruptted == True:
+            # use the fault start time to compute RTO
+            # find the first transaction after the fault start time that is not error or rollback and record end time as possible recovery end time, the fault start time and recovery end time pair is  rto interval
+            rto_query = """
+                WITH successful_transactions AS (
+                    SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time
+                    FROM transactions
+                    WHERE error = 0 AND rollback = 0
+                ),
+                thread_ids AS (
+                    SELECT DISTINCT txn_id >> 32 AS thread_id, """ + str(fault_start_ts) + """ as fault_start
+                    FROM transactions
+                )
+                SELECT t.thread_id, t.fault_start, st.end_time as recovery_end
+                FROM thread_ids t
+                ASOF JOIN successful_transactions st
+                ON t.thread_id = st.thread_id AND t.fault_start < st.end_time;
+            """
+            intervals = con.execute(rto_query).fetchall()
  
         con.close()
 
@@ -382,7 +383,7 @@ class bmsqlResult:
         # print all interrupt intervals
         for thread_id, intervals in merged_intervals.items():
             for interval in intervals:
-                print(f"Thread {thread_id}: interrupt start time: {datetime.datetime.fromtimestamp(interval[0] / 1000)}, recovery end time: {datetime.datetime.fromtimestamp(interval[1] / 1000)}")
+                print(f"Thread {thread_id:03d}: interrupt start time: {datetime.datetime.fromtimestamp(interval[0] / 1000)}, recovery end time: {datetime.datetime.fromtimestamp(interval[1] / 1000)}")
 
 
         print(f"Average interrupt time: {avg_interrupt_time} ms")
@@ -455,16 +456,20 @@ class bmsqlResult:
         # ----
         # Use pymser to find the steady state
         # ----
-        stready_result = pymser.equilibrate(txn_stat[fault_seconds:], LLM=True, batch_size=2, ADF_test=True, uncertainty='uSD', print_results=False)
+        stready_result = pymser.equilibrate(txn_stat[fault_seconds:], LLM=True, batch_size=3, ADF_test=True, uncertainty='uSD', print_results=True)
 
         recovery_time = stready_result['t0']
         steady_metrics['recovery_time_factor'] = stready_result['t0']
-        
+
         performance_desired = sum(txn_stat[rampup_seconds:fault_seconds])/ (fault_seconds - rampup_seconds)
-        total_performance = sum(txn_stat[fault_seconds:fault_seconds+recovery_time])/ recovery_time
-        total_performance_factor = total_performance / performance_desired
-        steady_metrics['total_performance_factor'] = total_performance_factor
-        
+
+        if recovery_time != 0:
+            total_performance = sum(txn_stat[fault_seconds:fault_seconds+recovery_time])/ recovery_time
+            total_performance_factor = total_performance / performance_desired
+            steady_metrics['total_performance_factor'] = total_performance_factor
+        else:
+            steady_metrics['total_performance_factor'] = -1
+
         absorption_factor = min(txn_stat[fault_seconds:fault_seconds+recovery_time]) / performance_desired
         steady_metrics['absorption_factor'] = absorption_factor
         
