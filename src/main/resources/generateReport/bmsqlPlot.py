@@ -41,7 +41,7 @@ class bmsqlPlot:
         plt.set_xlim(-int(runinfo['rampupMins'])*60, int(runinfo['runMins'])*60)
         plt.axvspan(-int(runinfo['rampupMins'])*60, 0,
                     facecolor = '0.2', alpha = 0.1)
-
+		
         # ----
         # offset the timestamps by -rampupMins so that the graph
         # starts with negative minutes elapsed and switches to
@@ -57,6 +57,11 @@ class bmsqlPlot:
             end = (int(row['end']) - startTS)//1000 
             if end >=0 and end < total_seconds:
                 txn_stat[end]+=1
+
+        fault_time = (int(result.faultinfo['start']) - startTS)//1000
+        warmupseconds = offset
+		# plot the recovery state to red
+        plt.axvspan(fault_time- warmupseconds, fault_time + result.steady_metric['recovery_time_factor']- warmupseconds, facecolor = 'r', alpha = 0.2)
 
         # ----
         # Plot the NOPM and add all the decorations
