@@ -60,8 +60,8 @@ class bmsqlResult:
             wrt.writerow(['rto', 'rpo', 'recovery_time_factor', 'total_performance_factor', 'absorption_factor', 'recovery_factor'])
             wrt.writerow([self.rto, self.rpo, self.steady_metric['recovery_time_factor'], self.steady_metric['total_performance_factor'], self.steady_metric['absorption_factor'], self.steady_metric['recovery_factor']])
 
-        self.stage_latency()
-        self.stage_throughput()
+        # self.stage_latency()
+        # self.stage_throughput()
 
         # ----
         # Load the other CSV files into dicts of arrays.
@@ -217,58 +217,58 @@ class bmsqlResult:
 
         return ttdict
 
-    def stage_latency(self):
-       """
-       Print the average latency for different stage, including last minute before the fault, duration time of fault, and average latency for first minute after the fault
-       """
-       if self.faultinfo == {}:
-            print("No fault found")
-            return
-       fault_time = int(self.faultinfo["start"])
-       before_fault = (fault_time - 60000, fault_time)
-       fault_duration = (fault_time, fault_time + int(self.faultinfo["duration"]))
-       after_fault = (fault_time + int(self.faultinfo["duration"]), fault_time + int(self.faultinfo["duration"]) + 60000)
-       before_fault_latency = []
-       fault_duration_latency = []
-       after_fault_latency = []
-       for row in self.txn_trace:
-           if before_fault[0] <= int(row["start"]) < before_fault[1]:
-               before_fault_latency.append(int(row["end"]) - int(row["start"]))
-           elif fault_duration[0] <= int(row["start"]) < fault_duration[1]:
-               fault_duration_latency.append(int(row["end"]) - int(row["start"]))
-           elif after_fault[0] <= int(row["start"]) < after_fault[1]:
-               after_fault_latency.append(int(row["end"]) - int(row["start"]))
-       print("Average latency before fault: ", sum(before_fault_latency) / len(before_fault_latency) , " ms")
-       if len(fault_duration_latency) > 0:
-            # compute the average latency during fault and change rate of latency during fault
-            print("Average latency during fault: ", sum(fault_duration_latency) / len(fault_duration_latency) , " ms",  " change rate: ", (sum(fault_duration_latency) / len(fault_duration_latency) - sum(before_fault_latency) / len(before_fault_latency)) / (sum(before_fault_latency) / len(before_fault_latency)) * 100, " %")
-       print("Average latency after fault: ", sum(after_fault_latency) / len(after_fault_latency) , " ms", " change rate: ", (sum(after_fault_latency) / len(after_fault_latency) - sum(before_fault_latency) / len(before_fault_latency)) / (sum(before_fault_latency) / len(before_fault_latency)) * 100, " %")
+    # def stage_latency(self):
+    #    """
+    #    Print the average latency for different stage, including last minute before the fault, duration time of fault, and average latency for first minute after the fault
+    #    """
+    #    if self.faultinfo == {}:
+    #         print("No fault found")
+    #         return
+    #    fault_time = int(self.faultinfo["start"])
+    #    before_fault = (fault_time - 60000, fault_time)
+    #    fault_duration = (fault_time, fault_time + int(self.faultinfo["duration"]))
+    #    after_fault = (fault_time + int(self.faultinfo["duration"]), fault_time + int(self.faultinfo["duration"]) + 60000)
+    #    before_fault_latency = []
+    #    fault_duration_latency = []
+    #    after_fault_latency = []
+    #    for row in self.txn_trace:
+    #        if before_fault[0] <= int(row["start"]) < before_fault[1]:
+    #            before_fault_latency.append(int(row["end"]) - int(row["start"]))
+    #        elif fault_duration[0] <= int(row["start"]) < fault_duration[1]:
+    #            fault_duration_latency.append(int(row["end"]) - int(row["start"]))
+    #        elif after_fault[0] <= int(row["start"]) < after_fault[1]:
+    #            after_fault_latency.append(int(row["end"]) - int(row["start"]))
+    #    print("Average latency before fault: ", sum(before_fault_latency) / len(before_fault_latency) , " ms")
+    #    if len(fault_duration_latency) > 0:
+    #         # compute the average latency during fault and change rate of latency during fault
+    #         print("Average latency during fault: ", sum(fault_duration_latency) / len(fault_duration_latency) , " ms",  " change rate: ", (sum(fault_duration_latency) / len(fault_duration_latency) - sum(before_fault_latency) / len(before_fault_latency)) / (sum(before_fault_latency) / len(before_fault_latency)) * 100, " %")
+    #    print("Average latency after fault: ", sum(after_fault_latency) / len(after_fault_latency) , " ms", " change rate: ", (sum(after_fault_latency) / len(after_fault_latency) - sum(before_fault_latency) / len(before_fault_latency)) / (sum(before_fault_latency) / len(before_fault_latency)) * 100, " %")
 
-    def stage_throughput(self):
-        """
-        Print the average throughput for different stage, including last minute before the fault, duration time of fault, and average throughput for first minute after the fault
-        """
-        if self.faultinfo == {}:
-            print("No fault found")
-            return
-        fault_time = int(self.faultinfo["start"])
-        before_fault = (fault_time - 60000, fault_time)
-        fault_duration = (fault_time, fault_time + int(self.faultinfo["duration"]))
-        after_fault = (fault_time + int(self.faultinfo["duration"]), fault_time + int(self.faultinfo["duration"]) + 60000)
-        before_fault_throughput = 0
-        fault_duration_throughput = 0
-        after_fault_throughput = 0
-        for row in self.txn_trace:
-            if before_fault[0] <= int(row["start"]) < before_fault[1]:
-                before_fault_throughput += 1
-            elif fault_duration[0] <= int(row["start"]) < fault_duration[1]:
-                fault_duration_throughput += 1
-            elif after_fault[0] <= int(row["start"]) < after_fault[1]:
-                after_fault_throughput += 1
-        print("Average throughput before fault: ", before_fault_throughput / 60 , " txn/s")
-        if int(self.faultinfo["duration"]) > 0:
-            print("Average throughput during fault: ", 1000 * fault_duration_throughput / int(self.faultinfo["duration"]), " txn/s", " change rate: ", ((1000 * fault_duration_throughput / int(self.faultinfo["duration"])) - (before_fault_throughput / 60)) / (before_fault_throughput / 60) * 100, " %")
-        print("Average throughput after fault: ", after_fault_throughput / 60 , " txn/s", " change rate: ", ((after_fault_throughput / 60) - (before_fault_throughput / 60)) / (before_fault_throughput / 60) * 100, " %")
+    # def stage_throughput(self):
+    #     """
+    #     Print the average throughput for different stage, including last minute before the fault, duration time of fault, and average throughput for first minute after the fault
+    #     """
+    #     if self.faultinfo == {}:
+    #         print("No fault found")
+    #         return
+    #     fault_time = int(self.faultinfo["start"])
+    #     before_fault = (fault_time - 60000, fault_time)
+    #     fault_duration = (fault_time, fault_time + int(self.faultinfo["duration"]))
+    #     after_fault = (fault_time + int(self.faultinfo["duration"]), fault_time + int(self.faultinfo["duration"]) + 60000)
+    #     before_fault_throughput = 0
+    #     fault_duration_throughput = 0
+    #     after_fault_throughput = 0
+    #     for row in self.txn_trace:
+    #         if before_fault[0] <= int(row["start"]) < before_fault[1]:
+    #             before_fault_throughput += 1
+    #         elif fault_duration[0] <= int(row["start"]) < fault_duration[1]:
+    #             fault_duration_throughput += 1
+    #         elif after_fault[0] <= int(row["start"]) < after_fault[1]:
+    #             after_fault_throughput += 1
+    #     print("Average throughput before fault: ", before_fault_throughput / 60 , " txn/s")
+    #     if int(self.faultinfo["duration"]) > 0:
+    #         print("Average throughput during fault: ", 1000 * fault_duration_throughput / int(self.faultinfo["duration"]), " txn/s", " change rate: ", ((1000 * fault_duration_throughput / int(self.faultinfo["duration"])) - (before_fault_throughput / 60)) / (before_fault_throughput / 60) * 100, " %")
+    #     print("Average throughput after fault: ", after_fault_throughput / 60 , " txn/s", " change rate: ", ((after_fault_throughput / 60) - (before_fault_throughput / 60)) / (before_fault_throughput / 60) * 100, " %")
 
     def rto(self, trace_file):
         """
@@ -314,6 +314,46 @@ class bmsqlResult:
 
 		# get threads number
         threads_num = con.execute("SELECT COUNT(DISTINCT (txn_id >> 32)) FROM transactions;").fetchone()[0]
+
+        if len(intervals) == 0:
+            # compute average latency of successful transactions before fault but after warmup
+            runinfo = self.runinfo
+            start_ts = int(runinfo["startTS"])
+            warmup_ts = start_ts + int(runinfo["rampupMins"]) * 1000
+            fault_start_ts = int(self.faultinfo["start"])
+            average_latency = con.execute("""
+                SELECT AVG(transactions.end - transactions.start) FROM transactions WHERE transactions.start >= """ + str(warmup_ts) + """ AND transactions.start < """ + str(fault_start_ts) + """ AND error = 0 AND rollback = 0;
+            """).fetchone()[0]
+        
+            # select a candidate fault start time, which is the first transaction end time after the fault start time and there is no successful transaction after it for 5*average_latency
+            sorted_txn_trace = sorted(self.txn_trace, key=lambda x: int(x["end"]))
+            interruptted = False
+            for (row, row_next) in zip(sorted_txn_trace[:-1], sorted_txn_trace[1:]):
+                if int(row["end"]) >= fault_start_ts and int(row_next["end"]) - int(row["end"]) > 5 * average_latency:
+                    fault_start_ts = int(row["end"])
+                    interruptted = True
+                    break
+            
+            if interruptted == True:
+                # use the fault start time to compute RTO
+                # find the first transaction after the fault start time that is not error or rollback and record end time as possible recovery end time, the fault start time and recovery end time pair is  rto interval
+                rto_query = """
+                    WITH successful_transactions AS (
+        				SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time
+        				FROM transactions
+        				WHERE error = 0 AND rollback = 0
+                    ),
+                   thread_ids AS (
+                        SELECT DISTINCT txn_id >> 32 AS thread_id, """ + str(fault_start_ts) + """ as fault_start
+                        FROM transactions
+                   )
+                   SELECT t.thread_id, t.fault_start, st.end_time as recovery_end
+                   FROM thread_ids t
+                   ASOF JOIN successful_transactions st
+                   ON t.thread_id = st.thread_id AND t.fault_start < st.end_time;
+                """
+                intervals = con.execute(rto_query).fetchall()
+ 
         con.close()
 
         merged_intervals = {}
@@ -432,5 +472,7 @@ class bmsqlResult:
         performance_recovery = sum(txn_stat[fault_seconds+recovery_time: min(fault_seconds+recovery_time+60, total_seconds)])/ min(60, total_seconds - fault_seconds - recovery_time)
         recovery_factor = performance_recovery / performance_desired
         steady_metrics['recovery_factor'] = recovery_factor
+
+        print(f"Steady state metrics: {steady_metrics}")
 
         return steady_metrics
