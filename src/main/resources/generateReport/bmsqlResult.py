@@ -5,6 +5,7 @@ import json
 import re
 import datetime
 import duckdb
+import pymser
 
 class bmsqlResult:
     def __init__(self, resdir):
@@ -39,7 +40,7 @@ class bmsqlResult:
             for row in rdr:
                 # only one fault is allowed currently
                 self.faultinfo = dict(row)
-                break  
+                break
 
         self.trace_fname = os.path.join(self.datadir, 'trace.csv')
         with open(self.trace_fname, newline='') as fd:
@@ -50,14 +51,15 @@ class bmsqlResult:
 
         self.rto = self.rto(self.trace_fname)
         self.rpo = self.rpo(self.trace_fname, txn_fname)
+        self.steady_metric = self.steady_metric()
 
         # write rto and rpo result into metrics.csv
         metrics_fname = os.path.join(self.datadir, 'metrics.csv')
         with open(metrics_fname, 'w', newline='') as fd:
             wrt = csv.writer(fd)
-            wrt.writerow(['rto', 'rpo'])
-            wrt.writerow([self.rto, self.rpo])
-        
+            wrt.writerow(['rto', 'rpo', 'recovery_time_factor', 'total_performance_factor', 'absorption_factor', 'recovery_factor'])
+            wrt.writerow([self.rto, self.rpo, self.steady_metric['recovery_time_factor'], self.steady_metric['total_performance_factor'], self.steady_metric['absorption_factor'], self.steady_metric['recovery_factor']])
+
         self.stage_latency()
         self.stage_throughput()
 
@@ -221,7 +223,7 @@ class bmsqlResult:
        """
        if self.faultinfo == {}:
             print("No fault found")
-            return 
+            return
        fault_time = int(self.faultinfo["start"])
        before_fault = (fault_time - 60000, fault_time)
        fault_duration = (fault_time, fault_time + int(self.faultinfo["duration"]))
@@ -241,14 +243,14 @@ class bmsqlResult:
             # compute the average latency during fault and change rate of latency during fault
             print("Average latency during fault: ", sum(fault_duration_latency) / len(fault_duration_latency) , " ms",  " change rate: ", (sum(fault_duration_latency) / len(fault_duration_latency) - sum(before_fault_latency) / len(before_fault_latency)) / (sum(before_fault_latency) / len(before_fault_latency)) * 100, " %")
        print("Average latency after fault: ", sum(after_fault_latency) / len(after_fault_latency) , " ms", " change rate: ", (sum(after_fault_latency) / len(after_fault_latency) - sum(before_fault_latency) / len(before_fault_latency)) / (sum(before_fault_latency) / len(before_fault_latency)) * 100, " %")
-    
+
     def stage_throughput(self):
         """
         Print the average throughput for different stage, including last minute before the fault, duration time of fault, and average throughput for first minute after the fault
         """
         if self.faultinfo == {}:
             print("No fault found")
-            return 
+            return
         fault_time = int(self.faultinfo["start"])
         before_fault = (fault_time - 60000, fault_time)
         fault_duration = (fault_time, fault_time + int(self.faultinfo["duration"]))
@@ -274,12 +276,12 @@ class bmsqlResult:
         """
         if self.faultinfo == {}:
             print("No fault found")
-            return 
+            return -1
 
         con = duckdb.connect()
 
         # create a table from the trace file
-		# CREATE TABLE transactions AS SELECT * FROM read_csv_auto('service_data/result_000137/data/trace.csv');
+		# CREATE TABLE transactions AS SELECT * FROM read_csv_auto('service_data/result_000162/data/trace.csv');
         con.execute("""
             CREATE TABLE transactions AS SELECT * FROM read_csv_auto('""" + trace_file + """');""")
 
@@ -352,19 +354,19 @@ class bmsqlResult:
         """
         if self.faultinfo == {}:
             print("No fault found")
-            return
-        
+            return -1
+
         # get all txn from trace file, and compare with txn file
         # find all loss txn_id who are in trace file but are not in txn file
         # the rpo result is the merge interval of all loss txn_id interval
         # for example, if the loss txn_id interval(start, end) is [1, 3], [2, 6], [5, 9], [15, 17], then the rpo result is len([1, 9]) + len([15, 17]) = 8 + 2 = 10
-        
+
         persisted_txn_ids = set()
         with open(txn_file, newline='') as fd:
             rdr = csv.DictReader(fd)
             for row in rdr:
                 persisted_txn_ids.add(row['txn_id'])
-        
+
         loss_txn_intervals = []
         with open(trace_file, newline='') as fd:
             rdr = csv.DictReader(fd)
@@ -373,7 +375,7 @@ class bmsqlResult:
                     continue
                 if row['txn_id'] not in persisted_txn_ids:
                     loss_txn_intervals.append((int(row['start']), int(row['end'])))
-        
+
         loss_txn_intervals.sort()
         merged_intervals = []
         for interval in loss_txn_intervals:
@@ -381,8 +383,54 @@ class bmsqlResult:
                 merged_intervals.append(interval)
             else:
                 merged_intervals[-1] = (merged_intervals[-1][0], max(merged_intervals[-1][1], interval[1]))
-        
+
         rpo = sum([interval[1] - interval[0] for interval in merged_intervals])
 
         print(f"RPO: {rpo} ms")
         return rpo
+
+    def steady_metric(self):
+        """
+        Returns a dictsonary of steady state metrics, containing recovery time factor(s, time to steady state), total performance factor(%, total performance/ desired performance), absorption factor(%, performance degradation/ desired performance), recovery factor(%, recovery performance/ desired performance)
+        """
+        steady_metrics = {}
+        if self.faultinfo == {}:
+            print("No fault found")
+            return steady_metrics
+
+        runinfo = self.runinfo
+
+        #TODO@wy change to precise fault time
+
+        total_seconds = int(runinfo['rampupMins'])*60 + int(runinfo['runMins'])*60
+        rampup_seconds = int(runinfo['rampupMins'])*60
+        startTS = (int(runinfo['startTS']))
+        txn_stat = [0 for i in range(total_seconds)]
+        for row in self.txn_trace:
+            end = (int(row['end']) - startTS)//1000
+            if end >=0 and end < total_seconds:
+                txn_stat[end]+=1
+        
+        fault_seconds = (int(self.faultinfo['start']) - startTS)//1000
+        # ----
+        # Use pymser to find the steady state
+        # ----
+        stready_result = pymser.equilibrate(txn_stat[fault_seconds:], LLM=True, batch_size=2, ADF_test=True, uncertainty='uSD', print_results=False)
+
+        recovery_time = stready_result['t0']
+        steady_metrics['recovery_time_factor'] = stready_result['t0']
+        
+        performance_desired = sum(txn_stat[rampup_seconds:fault_seconds])/ (fault_seconds - rampup_seconds)
+        total_performance = sum(txn_stat[fault_seconds:fault_seconds+recovery_time])/ recovery_time
+        total_performance_factor = total_performance / performance_desired
+        steady_metrics['total_performance_factor'] = total_performance_factor
+        
+        absorption_factor = min(txn_stat[fault_seconds:fault_seconds+recovery_time]) / performance_desired
+        steady_metrics['absorption_factor'] = absorption_factor
+        
+        # avaerage performance in later 1min or all time if recovery time is less than 1min
+        performance_recovery = sum(txn_stat[fault_seconds+recovery_time: min(fault_seconds+recovery_time+60, total_seconds)])/ min(60, total_seconds - fault_seconds - recovery_time)
+        recovery_factor = performance_recovery / performance_desired
+        steady_metrics['recovery_factor'] = recovery_factor
+
+        return steady_metrics
