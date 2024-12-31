@@ -1,4 +1,4 @@
-
+import math
 import os
 import io
 import csv
@@ -58,10 +58,10 @@ class bmsqlPlot:
             if end >=0 and end < total_seconds:
                 txn_stat[end]+=1
 
-        fault_time = (int(result.faultinfo['start']) - startTS)//1000
+        fault_time = math.ceil((int(result.faultinfo['start']) - startTS)/1000)
         warmupseconds = offset
 		# plot the recovery state to red
-        plt.axvspan(fault_time- warmupseconds, fault_time + result.steady_metric['recovery_time_factor']- warmupseconds, facecolor = 'r', alpha = 0.2)
+        plt.axvspan(fault_time- warmupseconds, fault_time + max(result.steady_metric['recovery_time_factor'], 1)- warmupseconds, facecolor = 'r', alpha = 0.2)
 
         # ----
         # Plot the NOPM and add all the decorations
