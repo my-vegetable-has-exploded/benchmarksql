@@ -25,6 +25,7 @@ mvn package -Dskiptest
 python3 -m venv tool
 source tool/bin/activate
 pip3 install flask numpy matplotlib jproperties
+pip install pymser==1.0.18
 cd target/run
 ./FlaskService/main.py & > tool.log 2>&1
 ```
