@@ -467,11 +467,12 @@ class bmsqlResult:
             total_performance = sum(txn_stat[fault_seconds:fault_seconds+recovery_time])/ recovery_time
             total_performance_factor = total_performance / performance_desired
             steady_metrics['total_performance_factor'] = total_performance_factor
+            absorption_factor = min(txn_stat[fault_seconds:fault_seconds+recovery_time]) / performance_desired
+            steady_metrics['absorption_factor'] = absorption_factor
         else:
             steady_metrics['total_performance_factor'] = -1
+            steady_metrics['absorption_factor'] = -1
 
-        absorption_factor = min(txn_stat[fault_seconds:fault_seconds+recovery_time]) / performance_desired
-        steady_metrics['absorption_factor'] = absorption_factor
         
         # avaerage performance in later 1min or all time if recovery time is less than 1min
         performance_recovery = sum(txn_stat[fault_seconds+recovery_time: min(fault_seconds+recovery_time+60, total_seconds)])/ min(60, total_seconds - fault_seconds - recovery_time)
