@@ -383,10 +383,14 @@ class bmsqlResult:
         # print all interrupt intervals
         for thread_id, intervals in merged_intervals.items():
             for interval in intervals:
-                print(f"Thread {thread_id:03d}: interrupt start time: {datetime.datetime.fromtimestamp(interval[0] / 1000)}, recovery end time: {datetime.datetime.fromtimestamp(interval[1] / 1000)}")
-
+                print(f"Thread {thread_id:03d}: interrupt start time: {datetime.datetime.fromtimestamp(interval[0] / 1000)}, recovery end time: {datetime.datetime.fromtimestamp(interval[1] / 1000)}, recovery time: {interval[1] - interval[0]} ms")
 
         print(f"Average interrupt time: {avg_interrupt_time} ms")
+
+        # compute the standard deviation of interrupt time
+        std_interrupt_time = math.sqrt(sum([(t - avg_interrupt_time) ** 2 for t in interrupt_time.values()]) / int(threads_num))
+        print(f"Standard deviation of interrupt time: {std_interrupt_time} ms")
+
         return avg_interrupt_time
 
     def rpo(self, trace_file, txn_file):
