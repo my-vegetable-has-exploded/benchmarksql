@@ -142,8 +142,8 @@ public class ChaosInjecter {
 		for (Map.Entry<String, String> entry : config.confs.entrySet()) {
 			replacements.put("$"+entry.getKey().toUpperCase(), configParse(entry.getValue()));
 		}
-		// compute random pod, shuffle pods and insert all with index, set random seed to 0, shuffle pods use random seed 0
-		java.util.Random random = new java.util.Random(0);
+		// compute random pod, shuffle pods and insert all with index
+		java.util.Random random = new java.util.Random();
 		List<Object> pods = new ArrayList<Object>();
 		for (String pod : config.pods) {
 			pods.add(configParse(pod));
