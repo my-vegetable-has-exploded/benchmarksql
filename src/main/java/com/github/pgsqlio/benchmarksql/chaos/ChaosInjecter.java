@@ -208,6 +208,8 @@ public class ChaosInjecter {
 
 		String chaosData = yaml.dump(chaos);
 		String chaosPath = faultPath + faultName;
+		// show chaosData in logger
+		logger.info("chaosData: {}", chaosData);
 		OutputStream chaosOutput = new FileOutputStream(chaosPath);
 		chaosOutput.write(chaosData.getBytes());
 		chaosOutput.close();

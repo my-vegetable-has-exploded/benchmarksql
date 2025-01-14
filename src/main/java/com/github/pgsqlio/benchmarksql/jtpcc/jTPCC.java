@@ -730,7 +730,13 @@ public class jTPCC {
     return dateFormat.format(new java.util.Date());
   }
 
-  private void copyFile(File in, File out) throws FileNotFoundException, IOException {
+  public static void copyFaultFile(String src) throws Exception{
+	  File in = new File(src);
+	  File out = new File(new File(resultDirName, "data"), "fault.yaml");
+	  copyFile(in, out);
+  }
+
+  private static void copyFile(File in, File out) throws FileNotFoundException, IOException {
     FileInputStream strIn = new FileInputStream(in);
     FileOutputStream strOut = new FileOutputStream(out);
     byte buf[] = new byte[65536];

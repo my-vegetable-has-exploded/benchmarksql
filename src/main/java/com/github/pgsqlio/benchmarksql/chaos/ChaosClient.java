@@ -119,6 +119,7 @@ public class ChaosClient {
 					// 断开连接
 					session.disconnect();
 					jTPCC.csv_fault_write(file+","+startTime+","+endTime+","+duration+"\n");
+					jTPCC.copyFaultFile(file);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
