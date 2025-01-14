@@ -6,6 +6,8 @@ import re
 import datetime
 import duckdb
 import pymser
+import yaml
+from scipy.signal import savgol_filter
 
 class bmsqlResult:
     def __init__(self, resdir):
@@ -41,6 +43,13 @@ class bmsqlResult:
                 # only one fault is allowed currently
                 self.faultinfo = dict(row)
                 break
+		
+        self.faultfile = None
+        self.faultfilename = os.path.join(self.resdir, 'fault.yaml')
+        if os.path.exists(self.faultfilename):
+            with open(self.faultfilename, 'r') as fd:
+                # load the fault file using yaml
+                self.faultfile = yaml.safe_load(fd.read())
 
         self.trace_fname = os.path.join(self.datadir, 'trace.csv')
         with open(self.trace_fname, newline='') as fd:
@@ -49,16 +58,16 @@ class bmsqlResult:
 
         txn_fname = os.path.join(self.datadir, 'txnlog.csv')
 
-        self.rto = self.rto(self.trace_fname)
-        self.rpo = self.rpo(self.trace_fname, txn_fname)
-        self.steady_metric = self.steady_metric()
+        # self.rto = self.rto(self.trace_fname)
+        # self.rpo = self.rpo(self.trace_fname, txn_fname)
+        self.steady_metrics = self.steady_metrics()
 
         # write rto and rpo result into metrics.csv
         metrics_fname = os.path.join(self.datadir, 'metrics.csv')
         with open(metrics_fname, 'w', newline='') as fd:
             wrt = csv.writer(fd)
             wrt.writerow(['rto', 'rpo', 'recovery_time_factor', 'total_performance_factor', 'absorption_factor', 'recovery_factor'])
-            wrt.writerow([self.rto, self.rpo, self.steady_metric['recovery_time_factor'], self.steady_metric['total_performance_factor'], self.steady_metric['absorption_factor'], self.steady_metric['recovery_factor']])
+            # wrt.writerow([self.rto, self.rpo, self.steady_metric['recovery_time_factor'], self.steady_metric['total_performance_factor'], self.steady_metric['absorption_factor'], self.steady_metric['recovery_factor']])
 
         # self.stage_latency()
         # self.stage_throughput()
@@ -333,7 +342,7 @@ class bmsqlResult:
             if int(row["end"]) >= fault_start_ts and int(row["end"]) <= (fault_start_ts + 5 * 1000) and int(row_next["end"]) - int(row["end"]) > 5 * average_latency:
                 fault_start_ts = int(row["end"])
                 interruptted = True
-                break
+                # break
         
         if interruptted == True:
             # use the fault start time to compute RTO
@@ -434,11 +443,154 @@ class bmsqlResult:
         print(f"RPO: {rpo} ms")
         return rpo
 
-    def steady_metric(self):
+    def parse_duration(self, duration):
+        """
+        将时间字符串（如 '480s', '2m', '100ms', '1.5h'）转换为秒数（浮点数）。
+        """
+        if duration.endswith('ms'):
+            return int(duration[:-2]) / 1000  # 毫秒转秒
+        elif duration.endswith('s'):
+            return int(duration[:-1])  # 秒
+        elif duration.endswith('m'):
+            return int(duration[:-1]) * 60  # 分钟转秒
+        elif duration.endswith('h'):
+            return int(duration[:-1]) * 3600  # 小时转秒
+        else:
+            raise ValueError(f"未知的时间格式: {duration}")
+
+    # 递归解析模板
+    def parse_template(self, template_name, templates, start_time=0):
+        # 找到当前模板
+        template = next(t for t in templates if t['name'] == template_name)
+        result = []
+
+        # 如果是 Serial 模板
+        if template['templateType'] == 'Serial':
+            current_time = start_time
+            for child in template.get('children', []):
+                child_results = self.parse_template(child, templates, current_time)
+                result.extend(child_results)
+                if child_results:
+                    current_time = child_results[-1]['end_time']  # 更新当前时间
+
+        # 如果是 Parallel 模板
+        elif template['templateType'] == 'Parallel':
+            for child in template.get('children', []):
+                child_results = self.parse_template(child, templates, start_time)
+                result.extend(child_results)
+
+        # 如果是具体的 Chaos 模板（如 NetworkChaos 或 PodChaos）
+        else:
+            if 'deadline' in template:
+                if template['templateType'] == 'PodChaos' and template['podChaos']['action'] == 'pod-kill':
+                    duration = 0  # pod-kill 的 duration 为 0
+                else:
+                    duration = self.parse_duration(template['deadline'])
+                result.append({
+                    'name': template['name'],
+                    'templateType': template['templateType'],
+                    'start_time': start_time,
+                    'end_time': start_time + duration,
+                    'duration_seconds': duration
+                })
+
+        return result
+
+    def fault_seconds(self):
+        """
+        Returns a tuple of fault start time and fault end time in seconds
+        """
+        runinfo = self.runinfo
+        startTS = (int(runinfo['startTS']))
+        total_seconds = int(runinfo['rampupMins'])*60 + int(runinfo['runMins'])*60
+        rampup_seconds = int(runinfo['rampupMins'])*60
+        first_fault_seconds = (int(self.faultinfo['start']) - startTS)//1000
+        fault_seconds = []
+
+        fault_file = self.faultfile 
+        # parse the chaosmesh yaml file to get all fault start time
+        # 1、 read the yaml file （already done）
+        # 2、 check spec.action is empty or not
+        # 3、 if not empty, only one fault, just use first fault start time
+        # 4、 if empty, check spec.entry, and parse the fault workflow recursively, compute the fault time according to serial/parallel and deadline(duration)
+        
+        if 'action' in fault_file['spec']:
+            fault_seconds.append(first_fault_seconds)
+        else :
+            # parse the fault workflow
+            fault_seconds = self.parse_template(fault_file['spec']['entry'], fault_file['spec']['templates'], first_fault_seconds)
+            # sort fault_seconds by start_time
+            fault_seconds.sort(key=lambda x: x['start_time'])
+            # get all fault start time
+            fault_seconds = [x['start_time'] for x in fault_seconds]
+            # remove duplicate
+            fault_seconds = list(set(fault_seconds))
+            # sort
+            fault_seconds.sort()
+        return fault_seconds
+
+    def steady_metric(self, fault_start, period_end, txn_stat, performance_desired):
+        rampup_seconds = int(self.runinfo['rampupMins'])*60
+        steady_metric = {
+            'start_time': fault_start,
+            'end_time': period_end,
+        }
+
+        # ----
+        # Use pymser to find the steady state
+        # ----
+        sd = txn_stat[fault_start:period_end]
+        sd = sd[:]
+        sd = savgol_filter(sd, 10, 2)
+        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=True, uncertainty='uSD', print_results=True)
+
+        mse = steady_result['MSE']
+        # mse = mse[:math.floor(0.8*len(mse))]
+        # mse = savgol_filter(mse, 10, 1)
+        # print("mse: {}", mse)
+
+        # find min mse
+        minn = 0
+        k = 15
+        # 找到第一个是比前后k个都小的点
+        for i in range(0, len(mse)):
+            is_local_min = True
+            for j in range(max(0, i-k), min(len(mse), i+k+1)):
+                if mse[j] < mse[i]:
+                    is_local_min = False
+                    break
+            if is_local_min:
+                minn = i
+                break
+            
+        print("recovery end {}",minn)
+
+        recovery_time = minn
+        steady_metric['recovery_time_factor'] = minn
+
+        if recovery_time != 0:
+            total_performance = sum(txn_stat[fault_start:fault_start+recovery_time])/ recovery_time
+            total_performance_factor = total_performance / performance_desired
+            steady_metric['total_performance_factor'] = total_performance_factor
+            absorption_factor = min(txn_stat[fault_start:fault_start+recovery_time]) / performance_desired
+            steady_metric['absorption_factor'] = absorption_factor
+        else:
+            steady_metric['total_performance_factor'] = -1
+            steady_metric['absorption_factor'] = -1
+        
+        # avaerage performance in later 1min or all time if recovery time is less than 1min
+        performance_recovery = sum(txn_stat[fault_start+recovery_time: min(fault_start+recovery_time+60, period_end)])/ min(60, period_end - fault_start - recovery_time)
+        recovery_factor = performance_recovery / performance_desired
+        steady_metric['recovery_factor'] = recovery_factor
+
+        print(f"Steady state metrics: {steady_metric}")
+        return steady_metric
+
+    def steady_metrics(self):
         """
         Returns a dictsonary of steady state metrics, containing recovery time factor(s, time to steady state), total performance factor(%, total performance/ desired performance), absorption factor(%, performance degradation/ desired performance), recovery factor(%, recovery performance/ desired performance)
         """
-        steady_metrics = {}
+        steady_metrics = []
         if self.faultinfo == {}:
             print("No fault found")
             return steady_metrics
@@ -456,33 +608,22 @@ class bmsqlResult:
             if end >=0 and end < total_seconds:
                 txn_stat[end]+=1
         
-        fault_seconds = (int(self.faultinfo['start']) - startTS)//1000
-        # ----
-        # Use pymser to find the steady state
-        # ----
-        stready_result = pymser.equilibrate(txn_stat[fault_seconds:], LLM=True, batch_size=3, ADF_test=True, uncertainty='uSD', print_results=True)
+        first_fault_seconds = (int(self.faultinfo['start']) - startTS)//1000
+        if first_fault_seconds <= rampup_seconds:
+            performance_desired = txn_stat[rampup_seconds]
+        else: 
+            performance_desired = sum(txn_stat[rampup_seconds:first_fault_seconds])/ (first_fault_seconds- rampup_seconds)
 
-        recovery_time = stready_result['t0']
-        steady_metrics['recovery_time_factor'] = stready_result['t0']
-
-        performance_desired = sum(txn_stat[rampup_seconds:fault_seconds])/ (fault_seconds - rampup_seconds)
-
-        if recovery_time != 0:
-            total_performance = sum(txn_stat[fault_seconds:fault_seconds+recovery_time])/ recovery_time
-            total_performance_factor = total_performance / performance_desired
-            steady_metrics['total_performance_factor'] = total_performance_factor
-            absorption_factor = min(txn_stat[fault_seconds:fault_seconds+recovery_time]) / performance_desired
-            steady_metrics['absorption_factor'] = absorption_factor
-        else:
-            steady_metrics['total_performance_factor'] = -1
-            steady_metrics['absorption_factor'] = -1
-
+        fault_seconds = self.fault_seconds()
+        print(f"fault_seconds: {fault_seconds}")
+        # fault_interval is the interval between two fault start time
+        fault_interval = []
+        for (s, t) in zip(fault_seconds[:-1], fault_seconds[1:]):
+            fault_interval.append((s, t))
+        fault_interval.append((fault_seconds[-1], total_seconds))
         
-        # avaerage performance in later 1min or all time if recovery time is less than 1min
-        performance_recovery = sum(txn_stat[fault_seconds+recovery_time: min(fault_seconds+recovery_time+60, total_seconds)])/ min(60, total_seconds - fault_seconds - recovery_time)
-        recovery_factor = performance_recovery / performance_desired
-        steady_metrics['recovery_factor'] = recovery_factor
-
-        print(f"Steady state metrics: {steady_metrics}")
+        for (fault_start, period_end) in fault_interval:
+            steady_metric = self.steady_metric(fault_start, period_end, txn_stat, performance_desired)
+            steady_metrics.append(steady_metric)
 
         return steady_metrics
