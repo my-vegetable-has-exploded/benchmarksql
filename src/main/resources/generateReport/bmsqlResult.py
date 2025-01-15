@@ -58,8 +58,8 @@ class bmsqlResult:
 
         txn_fname = os.path.join(self.datadir, 'txnlog.csv')
 
-        # self.rto = self.rto(self.trace_fname)
-        # self.rpo = self.rpo(self.trace_fname, txn_fname)
+        self.rto = self.rto(self.trace_fname)
+        self.rpo = self.rpo(self.trace_fname, txn_fname)
         self.steady_metrics = self.steady_metrics()
 
         # write rto and rpo result into metrics.csv
@@ -294,103 +294,52 @@ class bmsqlResult:
         con.execute("""
             CREATE TABLE transactions AS SELECT * FROM read_csv_auto('""" + trace_file + """');""")
 
-        # # find the fault start time and recovery end time
-        # # step1: find all transactions whose result is error or rollback and record end time as possible fault start time, the txn_id >> 32 is the thread id
-		# # CREATE TEMP TABLE error_transactions AS SELECT txn_id >> 32 AS thread_id ,transactions.start AS start_time, transactions.end AS end_time FROM transactions WHERE error = 1;
-		# # step2: find all sucessful transactions and record its thread_id and start time and end time
-		# # CREATE TEMP TABLE successful_transactions AS SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time FROM transactions WHERE error = 0 AND rollback = 0;
-        # # step3: find the first transaction after the fault start time that is not error or rollback and record end time as possible recovery end time for each thread in error_transactions, the fault start time and recovery end time pair is  rto interval
-		# # CREATE TEMP TABLE recovery_interval AS SELECT t.thread_id, t.end_time as fault_start, st.end_time as recovery_end FROM error_transactions t ASOF JOIN successful_transactions st ON t.thread_id = st.thread_id AND t.end_time < st.end_time;
-        # rto_query = """
-        #     WITH successful_transactions AS (
-		# 		SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time
-		# 		FROM transactions
-		# 		WHERE error = 0 AND rollback = 0
-        #     ),
-		# 	error_transactions AS (
-		# 		SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time
-		# 		FROM transactions
-		# 		WHERE error = 1 OR rollback = 1
-        #     )
-		# 	SELECT t.thread_id, t.end_time as fault_start, st.end_time as recovery_end
-		# 	FROM error_transactions t
-		# 	ASOF JOIN successful_transactions st
-		# 	ON t.thread_id = st.thread_id AND t.end_time < st.end_time;
-        # """
-
-        # # get all RTO intervals and group by thread_id, for overlapped intervals of the same thread_id, merge them
-        # intervals = con.execute(rto_query).fetchall()
-
 		# get threads number
         threads_num = con.execute("SELECT COUNT(DISTINCT (txn_id >> 32)) FROM transactions;").fetchone()[0]
 
-        intervals = []
+        intervals_per_thread = []
 
         # compute average latency of successful transactions before fault but after warmup
         runinfo = self.runinfo
         start_ts = int(runinfo["startTS"])
         warmup_ts = start_ts + int(runinfo["rampupMins"]) * 60 * 1000
         fault_start_ts = int(self.faultinfo["start"])
-        average_latency = con.execute("""
-            SELECT AVG(transactions.end - transactions.start) FROM transactions WHERE transactions.start >= """ + str(warmup_ts) + """ AND transactions.start < """ + str(fault_start_ts) + """ AND error = 0 AND rollback = 0;
+       
+        # compute p95 latency of successful transactions before fault but after warmup 
+        p95 = con.execute(""" 
+            SELECT PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY (transactions .end - transactions.start)) FROM transactions WHERE error = 0 AND rollback = 0 AND transactions.end > """ + str(warmup_ts) + """ AND transactions.end < """ + str(fault_start_ts) + """;
         """).fetchone()[0]
-    
-        # select a candidate fault start time, which is the first transaction end time after the fault start time (assuming fault happend in 5s after fault time) and there is no successful transaction after it for 5*average_latency
-        sorted_txn_trace = sorted(self.txn_trace, key=lambda x: int(x["end"]))
-        interruptted = False
-        for (row, row_next) in zip(sorted_txn_trace[:-1], sorted_txn_trace[1:]):
-            if int(row["end"]) >= fault_start_ts and int(row["end"]) <= (fault_start_ts + 5 * 1000) and int(row_next["end"]) - int(row["end"]) > 5 * average_latency:
-                fault_start_ts = int(row["end"])
-                interruptted = True
-                # break
-        
-        if interruptted == True:
-            # use the fault start time to compute RTO
-            # find the first transaction after the fault start time that is not error or rollback and record end time as possible recovery end time, the fault start time and recovery end time pair is  rto interval
-            rto_query = """
-                WITH successful_transactions AS (
-                    SELECT txn_id >> 32 AS thread_id, transactions.start AS start_time, transactions.end AS end_time
-                    FROM transactions
-                    WHERE error = 0 AND rollback = 0
-                ),
-                thread_ids AS (
-                    SELECT DISTINCT txn_id >> 32 AS thread_id, """ + str(fault_start_ts) + """ as fault_start
-                    FROM transactions
-                )
-                SELECT t.thread_id, t.fault_start, st.end_time as recovery_end
-                FROM thread_ids t
-                ASOF JOIN successful_transactions st
-                ON t.thread_id = st.thread_id AND t.fault_start < st.end_time;
-            """
-            intervals = con.execute(rto_query).fetchall()
- 
         con.close()
 
-        merged_intervals = {}
-        for interval in intervals:
-            thread_id, fault_start, recovery_end = interval
-            if thread_id not in merged_intervals:
-                merged_intervals[thread_id] = [(fault_start, recovery_end)]
-            else:
-                # check if the current interval overlaps with any of the existing intervals, if yes, merge current interval into the existing interval
-                merged = False
-                for i, (existing_start, existing_end) in enumerate(merged_intervals[thread_id]):
-                    if fault_start <= existing_end and recovery_end >= existing_start:
-                        merged_intervals[thread_id][i] = (min(fault_start, existing_start), max(recovery_end, existing_end))
-                        merged = True
-                        break
-                if merged == False:
-                    merged_intervals[thread_id].append((fault_start, recovery_end))
+        trace_pre_thread = {}
+        for row in self.txn_trace:
+            thread_id = int(row["txn_id"]) >> 32
+            if thread_id not in trace_pre_thread:
+                trace_pre_thread[thread_id] = []
+            if row['error'] == '1' or row['rollback'] == '1':
+                continue
+            trace_pre_thread[thread_id].append(row)
+    
+        intervals_per_thread = {}
+        for thread_id in trace_pre_thread:
+            intervals_per_thread[thread_id] = []
+            txn_trace = trace_pre_thread[thread_id]
+            sorted_txn_trace = sorted(txn_trace, key=lambda x: int(x["end"]))
+
+            # select a interrupt interval, which is the transaction gap there is no successful transaction after it for 5*average_latency
+            for (row, row_next) in zip(sorted_txn_trace[:-1], sorted_txn_trace[1:]):
+                if int(row_next['end']) > warmup_ts and int(row_next['end']) - int(row['end']) > 5 * p95:
+                    intervals_per_thread[thread_id].append((int(row['end']), int(row_next['end'])))
 
         # compute sum of interval duration for each thread_id, and compute the average interrupt time according thread_id
         interrupt_time = {}
-        for thread_id, intervals in merged_intervals.items():
+        for thread_id, intervals in intervals_per_thread.items():
             interrupt_time[thread_id] = sum([interval[1] - interval[0] for interval in intervals])
 
         avg_interrupt_time = sum(interrupt_time.values()) / int(threads_num)
 
         # print all interrupt intervals
-        for thread_id, intervals in merged_intervals.items():
+        for thread_id, intervals in intervals_per_thread.items():
             for interval in intervals:
                 print(f"Thread {thread_id:03d}: interrupt start time: {datetime.datetime.fromtimestamp(interval[0] / 1000)}, recovery end time: {datetime.datetime.fromtimestamp(interval[1] / 1000)}, recovery time: {interval[1] - interval[0]} ms")
 
