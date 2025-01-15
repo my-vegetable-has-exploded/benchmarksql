@@ -170,6 +170,8 @@ public class ChaosInjecter {
 		// parse duration and return milliseconds
 		if (duration.endsWith("s")) {
 			return Integer.parseInt(duration.substring(0, duration.length() - 1)) * 1000;
+		} else if (duration.endsWith("m")) {
+			return Integer.parseInt(duration.substring(0, duration.length() - 1)) * 60 * 1000;
 		} else if (duration.endsWith("min")) {
 			return Integer.parseInt(duration.substring(0, duration.length() - 3)) * 60 * 1000;
 		} else if (duration.endsWith("ms")) {
