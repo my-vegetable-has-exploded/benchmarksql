@@ -6,6 +6,7 @@ import benchmarksql
 import os
 import json
 import sys
+import copy
 
 app = flask.Flask(__name__)
 bench = benchmarksql.BenchmarkSQL()
@@ -56,6 +57,9 @@ def index():
 
         elif form['action'] == 'CANCEL':
             bench.cancel_job()
+
+        elif form['action'] == 'APPEND':
+            bench.append_benchmark(copy.deepcopy(form['properties']))
 
     data = {}
     data['current_job_type'] = bench.get_job_type()
