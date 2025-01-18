@@ -45,7 +45,7 @@ class bmsqlResult:
                 break
 		
         self.faultfile = None
-        self.faultfilename = os.path.join(self.resdir, 'fault.yaml')
+        self.faultfilename = os.path.join(self.datadir, 'fault.yaml')
         if os.path.exists(self.faultfilename):
             with open(self.faultfilename, 'r') as fd:
                 # load the fault file using yaml

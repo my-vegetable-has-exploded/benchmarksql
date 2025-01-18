@@ -15,6 +15,7 @@ import time
 import csv
 import shlex
 import jproperties
+import queue
 
 class BenchmarkSQL:
     """
@@ -66,6 +67,33 @@ class BenchmarkSQL:
         self.current_job_output = ""
         self.current_job_start = 0.0
         self.current_job_properties = self.get_properties()
+
+		# pending properties
+        self.pending_lock = threading.Lock()
+        self.pending_properties = queue.Queue(maxsize=30)
+        # create a thread to handle pending properties
+        self.pending_thread = threading.Thread(target=self.handle_pending_benchmark, daemon=True).start()
+    
+    def handle_pending_benchmark(self):
+        while True:
+            self.lock.acquire()
+            if self.current_job_type != 'IDLE':
+                self.lock.release()
+                time.sleep(1)
+                continue
+            self.lock.release()
+            self.pending_lock.acquire()
+            if not self.pending_properties.empty():
+                prop = self.pending_properties.get()
+                self.save_properties(prop)
+                self.run_benchmark()
+            self.pending_lock.release()
+            time.sleep(1)
+        
+    def append_benchmark(self, properties):
+        self.pending_lock.acquire()
+        self.pending_properties.put(properties)
+        self.pending_lock.release()
 
     def load_status(self):
         """
@@ -264,7 +292,7 @@ class BenchmarkSQL:
         self.lock.acquire()
         if self.current_job_type != 'IDLE':
             self.lock.release()
-            return
+            return False
 
         self.status_data['run_count'] += 1
         run_id = self.status_data['run_count']
@@ -285,6 +313,7 @@ class BenchmarkSQL:
         self.current_job_start = time.time()
         self.current_job.start()
         self.lock.release()
+        return True
 
     def run_allfaults(self):
         self.lock.acquire()
