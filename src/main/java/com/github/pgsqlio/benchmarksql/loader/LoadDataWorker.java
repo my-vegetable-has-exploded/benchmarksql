@@ -10,6 +10,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.github.pgsqlio.benchmarksql.jtpcc.jTPCCRandom;
+import com.github.pgsqlio.benchmarksql.jtpcc.SkewRandom;
 
 /**
  * LoadDataWorker - Class to load one Warehouse (or in a special case the ITEM table).
@@ -22,6 +23,9 @@ public class LoadDataWorker implements Runnable {
   private int worker;
   private Connection dbConn;
   private jTPCCRandom rnd;
+
+  private boolean isSkewed;
+  private SkewRandom skewRand;
 
   private StringBuffer sb;
   private Formatter fmt;
@@ -92,13 +96,16 @@ public class LoadDataWorker implements Runnable {
     this.fmtNewOrder = new Formatter(sbNewOrder);
   }
 
-  LoadDataWorker(int worker, Connection dbConn, jTPCCRandom rnd) throws SQLException {
+  LoadDataWorker(int worker, Connection dbConn, jTPCCRandom rnd, boolean isSkewed, SkewRandom skewRand) throws SQLException {
     this.worker = worker;
     this.dbConn = dbConn;
     this.rnd = rnd;
 
     this.sb = new StringBuffer();
     this.fmt = new Formatter(sb);
+
+	this.isSkewed = isSkewed;
+	this.skewRand = skewRand;
 
     stmtConfig = dbConn.prepareStatement(
         "INSERT INTO bmsql_config (" + "  cfg_name, cfg_value) " + "VALUES (?, ?)");
@@ -378,7 +385,9 @@ public class LoadDataWorker implements Runnable {
     /*
      * For each WAREHOUSE there are 10 DISTRICT rows.
      */
-    for (int d_id = 1; d_id <= 10; d_id++) {
+	int d_n = isSkewed ? (int) skewRand.getDistrictCount(w_id) : 10;
+	log.info("Warehouse " + w_id + " has " + d_n + " districts");
+    for (int d_id = 1; d_id <= d_n; d_id++) {
       if (writeCSV) {
         fmtDistrict.format("%d,%d,%.2f,%.4f,%d,%s,%s,%s,%s,%s,%s\n", d_id, w_id, 30000.0,
             ((double) rnd.nextLong(0, 2000)) / 10000.0, 3001, rnd.getAString_6_10(),

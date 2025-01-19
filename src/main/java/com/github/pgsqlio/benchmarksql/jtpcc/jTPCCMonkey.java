@@ -182,6 +182,9 @@ public class jTPCCMonkey {
     private jTPCCMonkey parent;
     private Random random;
 
+	private boolean isSkewed;
+	private SkewRandom skewRand;
+
     public jTPCCResult result;
 
     public Monkey(int m_id, jTPCCMonkey parent) {
@@ -189,6 +192,8 @@ public class jTPCCMonkey {
       this.m_id = m_id;
       this.parent = parent;
       this.random = new Random(System.currentTimeMillis());
+	  this.isSkewed = parent.gdata.isSkewed;
+	  this.skewRand = parent.gdata.skewRand;
 
       this.result = new jTPCCResult();
     }
@@ -344,16 +349,32 @@ public class jTPCCMonkey {
       }
     }
 
+	public long nextWarehouse(int w_id) {
+		if (isSkewed) {
+			return skewRand.nextParetoWarehouse();
+		}else{
+			return w_id;
+		}
+	}
+
+	public long nextDistrict(int w_id) {
+		if (isSkewed) {
+			return skewRand.nextDistrict(w_id);
+		}else{
+			return randomInt(1, 10);
+		}
+	}
+
     private void generateNewOrder(jTPCCTData tdata) {
       jTPCCTData.NewOrderData screen = tdata.NewOrderData();
       int ol_count;
       int ol_idx = 0;
 
       // 2.4.1.1 - w_id = terminal's w_id
-      screen.w_id = tdata.term_w_id;
+      screen.w_id = (int) nextWarehouse(tdata.term_w_id);
 
       // 2.4.1.2 - random d_id and non uniform random c_id
-      screen.d_id = rnd.nextInt(1, 10);
+      screen.d_id = (int) nextDistrict(screen.w_id);
       screen.c_id = rnd.getCustomerID();
 
       // 2.4.1.3 - random [5..15] order lines

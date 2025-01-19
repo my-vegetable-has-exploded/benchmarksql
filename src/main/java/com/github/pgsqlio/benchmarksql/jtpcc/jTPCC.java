@@ -40,6 +40,9 @@ public class jTPCC {
   public String iUser;
   public String iPassword;
 
+  public boolean isSkewed = false;
+  public SkewRandom skewRand = null;
+
   public static int loadWarehouses;
   public static int loadNuRandCLast;
   public static int loadNuRandCC_ID;
@@ -166,6 +169,16 @@ public class jTPCC {
       useWarehouseFrom = 1;
       useWarehouseTo = useWarehouses;
     }
+
+	isSkewed = getProp(ini, "skew", "false") == "false" ? false : true;
+	log.info("main, skew={}", isSkewed);
+	if (isSkewed) {
+		long seed = Long.parseLong(getProp(ini, "skew.seed", "0"));
+		double alphaData = Double.parseDouble(getProp(ini, "skew.alphaData", "0"));
+		double alphaTxn = Double.parseDouble(getProp(ini, "skew.alphaTxn", "0"));
+		long updateInterval = Long.parseLong(getProp(ini, "skew.updateInterval", "-1"));
+		skewRand = new SkewRandom(numWarehouses, 10, seed, alphaData, alphaTxn, updateInterval);
+	}
 
     numMonkeys = Integer.parseInt(getProp(ini, "monkeys"));
     numSUTThreads = Integer.parseInt(getProp(ini, "sutThreads"));

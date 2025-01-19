@@ -10,14 +10,17 @@ import java.sql.SQLException;
 import java.util.Properties;
 import java.util.Formatter;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.github.pgsqlio.benchmarksql.jtpcc.jTPCC;
 import com.github.pgsqlio.benchmarksql.jtpcc.jTPCCRandom;
+import com.github.pgsqlio.benchmarksql.jtpcc.SkewRandom;
 
 /**
- * LoadData - Load Sample Data directly into database tables or into CSV files using multiple
+ * LoadData - Load Sample Data directly into database tables or into CSV files
+ * using multiple
  * parallel workers.
  *
  * Copyright (C) 2016, Denis Lussier Copyright (C) 2016, Jan Wieck
@@ -42,8 +45,11 @@ public class LoadData {
   private static int nextWIDX = 0;
   private static int nextDIDX = 0;
   private static int nextOIDX = 0;
-  private static int nextCID[][][];
+  private static int nextCID[][];
   private static Object nextJobLock = new Object();
+
+  private static boolean isSkewed = false;
+  private static SkewRandom skewRand = null;
 
   private static LoadDataWorker[] workers;
   private static Thread[] workerThreads;
@@ -106,6 +112,15 @@ public class LoadData {
     fileLocation = iniGetString("fileLocation");
     csvNullValue = iniGetString("csvNullValue", "NULL");
 
+    isSkewed = iniGetString("skew", "false") != "false";
+    if (isSkewed == true) {
+      long seed = iniGetInt("skew.seed", 0);
+      double alphaData = iniGetDouble("skew.alphaData", 0);
+      double alphaTxn = iniGetDouble("skew.alphaTxn", 0);
+      long updateInterval = iniGetInt("skew.updateInterval", -1);
+      skewRand = new SkewRandom(numWarehouses, 10, seed, alphaData, alphaTxn, updateInterval);
+    }
+
     /*
      * If CSV files are requested, open them all.
      */
@@ -134,23 +149,23 @@ public class LoadData {
     /*
      * Initialize the random nextCID arrays (one per District) used in getNextJob()
      *
-     * For the ORDER rows the TPC-C specification demands that they are generated using a random
-     * permutation of all 3,000 customers. To do that we set up an array per district with all
+     * For the ORDER rows the TPC-C specification demands that they are generated
+     * using a random
+     * permutation of all 3,000 customers. To do that we set up an array per
+     * district with all
      * C_IDs and randomly shuffle each.
      */
-    nextCID = new int[numWarehouses][10][3000];
-    for (int w_idx = 0; w_idx < numWarehouses; w_idx++) {
-      for (int d_idx = 0; d_idx < 10; d_idx++) {
-        for (int c_idx = 0; c_idx < 3000; c_idx++) {
-          nextCID[w_idx][d_idx][c_idx] = c_idx + 1;
-        }
-        for (i = 0; i < 3000; i++) {
-          int x = rnd.nextInt(0, 2999);
-          int y = rnd.nextInt(0, 2999);
-          int tmp = nextCID[w_idx][d_idx][x];
-          nextCID[w_idx][d_idx][x] = nextCID[w_idx][d_idx][y];
-          nextCID[w_idx][d_idx][y] = tmp;
-        }
+    nextCID = new int[numWarehouses * 10][3000];
+    for (int d_idx = 0; d_idx < numWarehouses * 10; d_idx++) {
+      for (int c_idx = 0; c_idx < 3000; c_idx++) {
+        nextCID[d_idx][c_idx] = c_idx + 1;
+      }
+      for (i = 0; i < 3000; i++) {
+        int x = rnd.nextInt(0, 2999);
+        int y = rnd.nextInt(0, 2999);
+        int tmp = nextCID[d_idx][x];
+        nextCID[d_idx][x] = nextCID[d_idx][y];
+        nextCID[d_idx][y] = tmp;
       }
     }
 
@@ -168,7 +183,7 @@ public class LoadData {
         if (writeCSV)
           workers[i] = new LoadDataWorker(i, csvNullValue, rnd.newRandom());
         else
-          workers[i] = new LoadDataWorker(i, dbConn, rnd.newRandom());
+          workers[i] = new LoadDataWorker(i, dbConn, rnd.newRandom(), isSkewed, skewRand);
         workerThreads[i] = new Thread(workers[i]);
         workerThreads[i].start();
       } catch (SQLException se) {
@@ -208,6 +223,14 @@ public class LoadData {
       }
     }
   } // End of main()
+
+  public static Pair<Long, Long> getDistrictPosition(long d) {
+    if (isSkewed == true) {
+      return skewRand.getDistrictPosition(d);
+    } else {
+      return Pair.of((d / 10) + 1, (d % 10) + 1);
+    }
+  }
 
   public static void configAppend(StringBuffer buf) throws IOException {
     synchronized (configCSV) {
@@ -294,7 +317,8 @@ public class LoadData {
       }
 
       /*
-       * Load everything per warehouse except for the OORDER, ORDER_LINE and NEW_ORDER tables.
+       * Load everything per warehouse except for the OORDER, ORDER_LINE and NEW_ORDER
+       * tables.
        */
       if (!loadingWarehouseDone) {
         if (nextWIDX <= numWarehouses) {
@@ -315,34 +339,34 @@ public class LoadData {
       /*
        * Load the OORDER, ORDER_LINE and NEW_ORDER rows.
        *
-       * This is a state machine that will return jobs for creating orders in advancing O_ID
-       * numbers. Within them it will loop trough W_IDs and D_IDs. The C_IDs will be the ones
+       * This is a state machine that will return jobs for creating orders in
+       * advancing O_ID
+       * numbers. Within them it will loop trough W_IDs and D_IDs. The C_IDs will be
+       * the ones
        * preloaded into the nextCID arrays when this loader was created.
        */
       if (nextOIDX < 3000) {
         LoadJob job = new LoadJob();
 
-        if (nextOIDX % 100 == 0 && nextDIDX == 0 && nextWIDX == 0) {
+        if (nextOIDX % 100 == 0 && nextDIDX == 0 ) {
           fmt.format("Loading Orders with O_ID %4d and higher", nextOIDX + 1);
           log.info(sb.toString());
           sb.setLength(0);
         }
-
-        job.w_id = nextWIDX + 1;
-        job.d_id = nextDIDX + 1;
-        job.c_id = nextCID[nextWIDX][nextDIDX][nextOIDX];
+        
+        Pair<Long, Long> pos = getDistrictPosition(nextDIDX);
+        job.w_id = pos.getLeft().intValue();
+        job.d_id = pos.getRight().intValue();
+        job.c_id = nextCID[nextDIDX][nextOIDX];
         job.o_id = nextOIDX + 1;
 
-        if (++nextDIDX >= 10) {
+        if (++nextDIDX >= 10* numWarehouses) {
           nextDIDX = 0;
-          if (++nextWIDX >= numWarehouses) {
-            nextWIDX = 0;
             ++nextOIDX;
 
             if (nextOIDX >= 3000) {
               log.info("Loading Orders done");
             }
-          }
         }
 
         fmt.format("Order %d,%d,%d,%d", job.o_id, job.w_id, job.d_id, job.c_id);
@@ -421,5 +445,13 @@ public class LoadData {
     if (strVal == null)
       return defVal;
     return Integer.parseInt(strVal);
+  }
+
+  private static double iniGetDouble(String name, double defVal) {
+    String strVal = iniGetString(name);
+
+    if (strVal == null)
+      return defVal;
+    return Double.parseDouble(strVal);
   }
 }
