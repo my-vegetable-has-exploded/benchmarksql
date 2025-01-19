@@ -33,6 +33,11 @@ public class PerformConfig {
     public double stockLevelWeight = 0;
     public double storeWeight = 0;
     public double rollbackPercent = 0;
+    public boolean isSkewed = false;
+    public long seed = 0;
+    public double alphaData = 0.0;
+    public double alphaTxn = 0.0;
+    public long updateInterval = -1;
     
 
     String getValFromYamlMap(HashMap<String, Object> yamlMap, String key, String defVal) {
@@ -122,6 +127,22 @@ public class PerformConfig {
         if (yamlMap.containsKey("rollbackPercent")) {
             rollbackPercent = Double.parseDouble(getValFromYamlMap(yamlMap, "rollbackPercent"));
         }
+        if (yamlMap.containsKey("isSkewed")) {
+            isSkewed = Boolean.parseBoolean(getValFromYamlMap(yamlMap, "isSkewed"));
+        }
+        if( yamlMap.containsKey("seed")) {
+            seed = Long.parseLong(getValFromYamlMap(yamlMap, "skew.seed"));
+        }
+        if( yamlMap.containsKey("alphaData")) {
+            alphaData = Double.parseDouble(getValFromYamlMap(yamlMap, "skew.alphaData"));
+        }
+        if( yamlMap.containsKey("alphaTxn")) {
+            alphaTxn = Double.parseDouble(getValFromYamlMap(yamlMap, "skew.alphaTxn"));
+        }
+        if( yamlMap.containsKey("updateInterval")) {
+            updateInterval = Long.parseLong(getValFromYamlMap(yamlMap, "skew.updateInterval"));
+        }
+
     }
 
     public PerformConfig(HashMap<String, Object> yamlMap) {
@@ -206,6 +227,21 @@ public class PerformConfig {
         }
         if (p.containsKey("rollbackPercent")) {
             rollbackPercent = Double.parseDouble(getProp(p, "rollbackPercent"));
+        }
+        if( p.containsKey("isSkewed")) {
+            isSkewed = Boolean.parseBoolean(getProp(p, "isSkewed"));
+        }
+        if( p.containsKey("seed")) {
+            seed = Long.parseLong(getProp(p, "skew.seed"));
+        }
+        if( p.containsKey("alphaData")) {
+            alphaData = Double.parseDouble(getProp(p, "skew.alphaData"));
+        }
+        if( p.containsKey("alphaTxn")) {
+            alphaTxn = Double.parseDouble(getProp(p, "skew.alphaTxn"));
+        }
+        if( p.containsKey("updateInterval")) {
+            updateInterval = Long.parseLong(getProp(p, "skew.updateInterval"));
         }
     }
 

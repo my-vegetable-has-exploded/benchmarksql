@@ -44,6 +44,9 @@ public class jTPCC {
   public String iUser;
   public String iPassword;
 
+  public boolean isSkewed = false;
+  public SkewRandom skewRand = null;
+
   public static int loadWarehouses;
   public static int loadNuRandCLast;
   public static int loadNuRandCC_ID;
@@ -287,6 +290,15 @@ public class jTPCC {
       useWarehouseTo = useWarehouses;
     }
 
+	isSkewed = performConfig.isSkewed;
+	log.info("main, skew={}", isSkewed);
+	if (isSkewed) {
+		long seed = performConfig.seed;
+		double alphaData = performConfig.alphaData;
+		double alphaTxn = performConfig.alphaTxn;
+		long updateInterval = performConfig.updateInterval;
+		skewRand = new SkewRandom(numWarehouses, 10, seed, alphaData, alphaTxn, updateInterval);
+	}
     numMonkeys = performConfig.numMonkeys;
     numSUTThreads = performConfig.numSUTThreads;
     maxDeliveryBGThreads = performConfig.maxDeliveryBGThreads;
