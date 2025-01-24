@@ -160,7 +160,7 @@ public class SkewRandom {
 		// warehouse multiplied by the pareto distribution weight
 		ArrayList<Double> adjustedWeights = new ArrayList<>();
 		for (int i = 0; i < numWarehouses; i++) {
-			double paretoValue = nextPareto(alphaTxn, 1.0, random);
+			double paretoValue = nextPareto(alphaTxn, 1.0, new Random());
 			adjustedWeights.add(paretoValue * districts.get(i));
 		}
 
