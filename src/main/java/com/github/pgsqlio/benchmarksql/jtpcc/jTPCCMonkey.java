@@ -185,6 +185,9 @@ public class jTPCCMonkey {
 	private boolean isSkewed;
 	private SkewRandom skewRand;
 
+	private double distributedRatio;
+	private int distributedWarehouses;
+
     public jTPCCResult result;
 
     public Monkey(int m_id, jTPCCMonkey parent) {
@@ -194,6 +197,8 @@ public class jTPCCMonkey {
       this.random = new Random(System.currentTimeMillis());
 	  this.isSkewed = parent.gdata.isSkewed;
 	  this.skewRand = parent.gdata.skewRand;
+	  this.distributedRatio = parent.gdata.distributedRatio;
+	  this.distributedWarehouses = parent.gdata.distributedNodes;
 
       this.result = new jTPCCResult();
     }
@@ -377,26 +382,37 @@ public class jTPCCMonkey {
       screen.d_id = (int) nextDistrict(screen.w_id);
       screen.c_id = rnd.getCustomerID();
 
-      // 2.4.1.3 - random [5..15] order lines
-    //   ol_count = rnd.nextInt(5, 15);
-	  ol_count = 5;
-      while (ol_idx < ol_count) {
-        // 2.4.1.5 1) - non uniform ol_i_id
-        screen.ol_i_id[ol_idx] = rnd.getItemID();
+	  if (randomDouble() < distributedRatio) {
+	    ol_count = (int) randomInt(distributedWarehouses, 15);
+		  // generate distributedWarehouses, if distributedWarehouses < ol_count, use term_w_id
+		  while (ol_idx < ol_count) {
+		  	screen.ol_i_id[ol_idx] = rnd.getItemID();
+  			if (ol_idx < distributedWarehouses) {
+				  screen.ol_supply_w_id[ol_idx] = rnd.nextInt(1, jTPCC.numWarehouses);
+			  }else{
+				  screen.ol_supply_w_id[ol_idx] = tdata.term_w_id;
+			  }
+			  screen.ol_quantity[ol_idx] = rnd.nextInt(1, 10);
+			  ol_idx++;
+		  }
+	  }else{
+        // 2.4.1.3 - random [5..15] order lines
+        //   ol_count = rnd.nextInt(5, 15);
+	    // ol_count = (int) randomInt(5, 15);
+        ol_count = 5;
+        while (ol_idx < ol_count) {
+          // 2.4.1.5 1) - non uniform ol_i_id
+          screen.ol_i_id[ol_idx] = rnd.getItemID();
 
-        // 2.4.1.5 2) - In 1% of order lines the supply warehouse
-        // is different from the terminal's home warehouse.
-        screen.ol_supply_w_id[ol_idx] = tdata.term_w_id;
-        if (rnd.nextInt(1, 100) == 1) {
-          do {
-            screen.ol_supply_w_id[ol_idx] = rnd.nextInt(1, jTPCC.numWarehouses);
-          } while (screen.ol_supply_w_id[ol_idx] == tdata.term_w_id && jTPCC.numWarehouses > 1);
-        }
+          // 2.4.1.5 2) - In 1% of order lines the supply warehouse
+          // is different from the terminal's home warehouse.
+          screen.ol_supply_w_id[ol_idx] = tdata.term_w_id;
 
-        // 2.4.1.5 3) - random ol_quantity [1..10]
-        screen.ol_quantity[ol_idx] = rnd.nextInt(1, 10);
-        ol_idx++;
-      }
+          // 2.4.1.5 3) - random ol_quantity [1..10]
+          screen.ol_quantity[ol_idx] = rnd.nextInt(1, 10);
+          ol_idx++;
+      	}
+	  }
 
       // 2.4.1.4 - 1% of orders must use an invalid ol_o_id in the last
       // order line generated.

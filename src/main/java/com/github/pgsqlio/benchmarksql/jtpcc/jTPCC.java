@@ -43,6 +43,9 @@ public class jTPCC {
   public boolean isSkewed = false;
   public SkewRandom skewRand = null;
 
+  public double distributedRatio = 0.01;
+  public int distributedNodes = 1;
+
   public static int loadWarehouses;
   public static int loadNuRandCLast;
   public static int loadNuRandCC_ID;
@@ -179,6 +182,11 @@ public class jTPCC {
 		long updateInterval = Long.parseLong(getProp(ini, "skew.updateInterval", "-1"));
 		skewRand = new SkewRandom(numWarehouses, 10, seed, alphaData, alphaTxn, updateInterval);
 	}
+
+	distributedRatio = Double.parseDouble(getProp(ini, "distributedRatio", "0.01"));
+	distributedNodes = Integer.parseInt(getProp(ini, "distributedNodes", "1"));
+	log.info("main, distributedRatio={}", distributedRatio);
+	log.info("main, distributedNodes={}", distributedNodes);
 
     numMonkeys = Integer.parseInt(getProp(ini, "monkeys"));
     numSUTThreads = Integer.parseInt(getProp(ini, "sutThreads"));
