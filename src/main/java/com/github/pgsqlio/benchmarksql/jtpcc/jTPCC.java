@@ -47,6 +47,9 @@ public class jTPCC {
   public boolean isSkewed = false;
   public SkewRandom skewRand = null;
 
+  public double distributedRatio = 0.01;
+  public int distributedNodes = 1;
+
   public static int loadWarehouses;
   public static int loadNuRandCLast;
   public static int loadNuRandCC_ID;
@@ -299,6 +302,8 @@ public class jTPCC {
 		long updateInterval = performConfig.updateInterval;
 		skewRand = new SkewRandom(numWarehouses, 10, seed, alphaData, alphaTxn, updateInterval);
 	}
+    distributedRatio = performConfig.distributedRatio;
+    distributedNodes = performConfig.distributedNodes;
     numMonkeys = performConfig.numMonkeys;
     numSUTThreads = performConfig.numSUTThreads;
     maxDeliveryBGThreads = performConfig.maxDeliveryBGThreads;

@@ -38,6 +38,8 @@ public class PerformConfig {
     public double alphaData = 0.0;
     public double alphaTxn = 0.0;
     public long updateInterval = -1;
+    public double distributedRatio = 0.01;
+    public int distributedNodes = 1;
     
 
     String getValFromYamlMap(HashMap<String, Object> yamlMap, String key, String defVal) {
@@ -142,7 +144,12 @@ public class PerformConfig {
         if( yamlMap.containsKey("updateInterval")) {
             updateInterval = Long.parseLong(getValFromYamlMap(yamlMap, "skew.updateInterval"));
         }
-
+        if (yamlMap.containsKey("distributedRatio")) {
+            distributedRatio = Double.parseDouble(getValFromYamlMap(yamlMap, "distributedRatio"));
+        }
+        if (yamlMap.containsKey("distributedNodes")) {
+            distributedNodes = Integer.parseInt(getValFromYamlMap(yamlMap, "distributedNodes"));
+        }
     }
 
     public PerformConfig(HashMap<String, Object> yamlMap) {
@@ -242,6 +249,12 @@ public class PerformConfig {
         }
         if( p.containsKey("updateInterval")) {
             updateInterval = Long.parseLong(getProp(p, "skew.updateInterval"));
+        }
+        if (p.containsKey("distributedRatio")) {
+            distributedRatio = Double.parseDouble(getProp(p, "distributedRatio"));
+        }
+        if (p.containsKey("distributedNodes")) {
+            distributedNodes = Integer.parseInt(getProp(p, "distributedNodes"));
         }
     }
 
