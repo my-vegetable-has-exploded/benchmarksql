@@ -6,3 +6,4 @@ numpy
 matplotlib
 paho-mqtt
 jproperties
+pymser==1.0.18

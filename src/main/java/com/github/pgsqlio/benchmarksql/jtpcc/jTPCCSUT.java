@@ -190,6 +190,10 @@ public class jTPCCSUT {
               processDeliveryBG(tdata, txn_id);
               break;
 
+			case jTPCCTData.TT_STORE:
+			  processStore(tdata, txn_id); 
+			  break;
+
             default:
               log.error("sut-{} unhandled Transaction type code {} in SUT", this.t_id,
                   tdata.trans_type);
@@ -290,6 +294,10 @@ public class jTPCCSUT {
     private void processDeliveryBG(jTPCCTData tdata, long txn_id) throws Exception {
       application.executeDeliveryBG(tdata.delivery_bg, txn_id);
     }
+
+	private void processStore(jTPCCTData tdata, long txn_id) throws Exception {
+	  application.executeStore(tdata.store, txn_id);
+	}
 
     private long randomInt(long min, long max) {
       return (long) (random.nextDouble() * (max - min + 1) + min);

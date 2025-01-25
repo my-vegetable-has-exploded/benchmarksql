@@ -16,11 +16,11 @@ public class jTPCCResult {
   public static final double STATS_CUTOFF = 600.0;
 
   public jTPCCResult() {
-    histCounter = new HistCounter[jTPCCTData.TT_DELIVERY_BG + 1];
-    for (int i = 0; i < jTPCCTData.TT_DELIVERY_BG + 1; i++)
+    histCounter = new HistCounter[jTPCCTData.TT_STORE + 1];
+    for (int i = 0; i < jTPCCTData.TT_STORE  + 1; i++)
       histCounter[i] = new HistCounter();
-    resCounter = new ResCounter[jTPCCTData.TT_DELIVERY_BG + 1];
-    for (int i = 0; i < jTPCCTData.TT_DELIVERY_BG + 1; i++)
+    resCounter = new ResCounter[jTPCCTData.TT_STORE + 1];
+    for (int i = 0; i < jTPCCTData.TT_STORE + 1; i++)
       resCounter[i] = new ResCounter();
     lock = new Object();
     statsDivider = Math.log(STATS_CUTOFF * 1000.0) / (double) (NUM_BUCKETS);
@@ -36,7 +36,7 @@ public class jTPCCResult {
     long delay;
     int bucket;
 
-    if (tdata.trans_type < 0 || tdata.trans_type > jTPCCTData.TT_DELIVERY_BG)
+    if (tdata.trans_type < 0 || tdata.trans_type > jTPCCTData.TT_STORE)
       return;
 
     hCounter = histCounter[tdata.trans_type];
@@ -105,7 +105,7 @@ public class jTPCCResult {
   public void emit(long now) {
     long second = (resultNextDue - resultStartMS) / 1000;
 
-    for (int tt = 0; tt <= jTPCCTData.TT_DELIVERY_BG; tt++) {
+    for (int tt = 0; tt <= jTPCCTData.TT_STORE; tt++) {
       jTPCC.csv_result_write(
           jTPCCTData.trans_type_names[tt] + "," + second + "," + resCounter[tt].numTrans + ","
               + resCounter[tt].sumLatencyMS + "," + resCounter[tt].minLatencyMS + ","
@@ -131,7 +131,7 @@ public class jTPCCResult {
 
   public void aggregate(jTPCCResult into) {
     synchronized (lock) {
-      for (int tt = 0; tt <= jTPCCTData.TT_DELIVERY_BG; tt++) {
+      for (int tt = 0; tt <= jTPCCTData.TT_STORE; tt++) {
         if (into.histCounter[tt].numTrans == 0) {
           into.histCounter[tt].minMS = histCounter[tt].minMS;
           into.histCounter[tt].maxMS = histCounter[tt].maxMS;

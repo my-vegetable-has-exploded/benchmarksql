@@ -7,10 +7,10 @@ import java.util.ArrayList;
  */
 public class jTPCCTData {
   public final static int TT_NEW_ORDER = 0, TT_PAYMENT = 1, TT_ORDER_STATUS = 2, TT_STOCK_LEVEL = 3,
-      TT_DELIVERY = 4, TT_DELIVERY_BG = 5, TT_NONE = 6, TT_DONE = 7;
+      TT_DELIVERY = 4, TT_DELIVERY_BG = 5, TT_STORE = 6, TT_NONE = 7, TT_DONE = 8;
 
   public final static String trans_type_names[] = {"NEW_ORDER", "PAYMENT", "ORDER_STATUS",
-      "STOCK_LEVEL", "DELIVERY", "DELIVERY_BG", "NONE", "DONE"};
+      "STOCK_LEVEL", "DELIVERY", "DELIVERY_BG", "STORE", "NONE", "DONE"};
 
   public int sched_code;
   public long sched_fuzz;
@@ -36,6 +36,7 @@ public class jTPCCTData {
   public StockLevelData stock_level = null;
   public DeliveryData delivery = null;
   public DeliveryBGData delivery_bg = null;
+  public StoreData store = null;
 
   public String dumpHdr() {
     return new String("TData(" + "term_w_id=" + term_w_id + " term_d_id=" + term_d_id
@@ -189,5 +190,16 @@ public class jTPCCTData {
     public String ol_delivery_d;
 
     public int delivered_o_id[];
+  }
+
+  public StoreData StoreData() {
+    return new StoreData();
+  }
+
+  public class StoreData {
+	/* Store item and increase stock quantity */
+	public int w_id;
+	public int i_id;
+	public int quantity;
   }
 }

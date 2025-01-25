@@ -22,6 +22,7 @@ class bmsqlResult:
                 'STOCK_LEVEL',
                 'DELIVERY',
                 'DELIVERY_BG',
+				'STORE',
             ]
         self.resdir = resdir
         self.datadir = os.path.join(resdir, 'data')
@@ -328,7 +329,8 @@ class bmsqlResult:
 
             # select a interrupt interval, which is the transaction gap there is no successful transaction after it for 5*average_latency
             for (row, row_next) in zip(sorted_txn_trace[:-1], sorted_txn_trace[1:]):
-                if int(row_next['end']) > warmup_ts and int(row_next['end']) - int(row['end']) > 5 * p95:
+                if int(row_next['end']) > warmup_ts and int(row_next['end']) - int(row['end']) > max(5 * p95, 2000):
+                # if int(row_next['end']) > warmup_ts and int(row_next['end']) - int(row['end']) > 5 * p95:
                     intervals_per_thread[thread_id].append((int(row['end']), int(row_next['end'])))
 
         # compute sum of interval duration for each thread_id, and compute the average interrupt time according thread_id
@@ -500,7 +502,7 @@ class bmsqlResult:
 
         # find min mse
         minn = 0
-        k = 15
+        k = 10
         # 找到第一个是比前后k个都小的点
         for i in range(0, len(mse)):
             is_local_min = True

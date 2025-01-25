@@ -29,6 +29,7 @@ public class AppGeneric extends jTPCCApplication {
   private static Logger log = LogManager.getLogger(AppGeneric.class);;
   private jTPCC gdata;
   private int sut_id;
+  private int t_w_id;
 
   private Connection dbConn;
 
@@ -68,6 +69,8 @@ public class AppGeneric extends jTPCCApplication {
   public PreparedStatement stmtDeliveryBGUpdateOrderLine;
   public PreparedStatement stmtDeliveryBGUpdateCustomer;
 
+  public PreparedStatement stmtStoreUpdateStock;
+
   public PreparedStatement stmtTxnLog;
 
   public void init(jTPCC gdata, int sut_id) throws Exception {
@@ -75,6 +78,7 @@ public class AppGeneric extends jTPCCApplication {
 
     this.gdata = gdata;
     this.sut_id = sut_id;
+	this.t_w_id = (sut_id % gdata.numWarehouses) + 1;
 
     // Connect to the database
     dbProps = new Properties();
@@ -357,6 +361,11 @@ public class AppGeneric extends jTPCCApplication {
         + "    SET c_balance = c_balance + ?, "
         + "        c_delivery_cnt = c_delivery_cnt + 1 "
         + "    WHERE c_w_id = ? AND c_d_id = ? AND c_id = ?");
+
+	stmtStoreUpdateStock = dbConn.prepareStatement(
+		  "UPDATE bmsql_stock "
+		+ "    SET s_quantity = s_quantity + ? "
+		+ "    WHERE s_w_id = ? AND s_i_id = ?");
 
 	stmtTxnLog = dbConn.prepareStatement(
 		  "INSERT INTO bmsql_txnlog (txn_id)"
@@ -1246,5 +1255,51 @@ public class AppGeneric extends jTPCCApplication {
       }
       throw e;
     }
+  }
+
+  public void executeStore(jTPCCTData.StoreData store, long txn_id) throws Exception {
+	PreparedStatement stmt;
+	ResultSet rs;
+	int w_id = this.t_w_id;
+	int i_id = store.i_id;
+	int quantity = store.quantity;
+
+	String last_stmt = "unknown";
+
+	try {
+		last_stmt = "stmtStoreUpdateStock";
+		stmt = stmtStoreUpdateStock;
+		stmt.setInt(1, quantity);
+		stmt.setInt(2, w_id);
+		stmt.setInt(3, i_id);
+		stmt.executeUpdate();
+
+		// PreparedStatement tracestmt;
+		// tracestmt = stmtTxnLog;
+		// tracestmt.setLong(1, txn_id);
+		// tracestmt.executeUpdate();
+
+		dbConn.commit();
+	} catch (SQLException se) {
+		log.error("Unexpected SQLException in STORE - stmt = '" +
+				last_stmt + "'");
+		for (SQLException x = se; x != null; x = x.getNextException())
+			log.error(x.getMessage());
+		log.info(se);
+
+		try {
+			dbConn.rollback();
+		} catch (SQLException se2) {
+			throw new Exception("Unexpected SQLException on rollback: " + se2.getMessage());
+		}
+		throw se;
+	} catch (Exception e) {
+		try {
+			dbConn.rollback();
+		} catch (SQLException se2) {
+			throw new Exception("Unexpected SQLException on rollback: " + se2.getMessage());
+		}
+		throw e;
+	}
   }
 }

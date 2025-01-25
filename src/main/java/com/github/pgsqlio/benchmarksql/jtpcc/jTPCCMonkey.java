@@ -1,5 +1,6 @@
 package com.github.pgsqlio.benchmarksql.jtpcc;
 
+import java.sql.JDBCType;
 import java.util.Formatter;
 import java.util.Locale;
 import java.util.Random;
@@ -58,7 +59,7 @@ public class jTPCCMonkey {
     }
     gdata.systemUnderTest.deliveryBg.result.aggregate(sumStats);
 
-    for (int tt = jTPCCTData.TT_NEW_ORDER; tt <= jTPCCTData.TT_DELIVERY; tt++) {
+    for (int tt = jTPCCTData.TT_NEW_ORDER; tt <= jTPCCTData.TT_STORE ; tt++) {
       total_count += (double) (sumStats.histCounter[tt].numTrans);
     }
 
@@ -67,7 +68,7 @@ public class jTPCCMonkey {
         "result,   TransType              count |   mix % |    mean       max     90th% |    rbk%          errors");
     log.info(
         "result, +--------------+---------------+---------+---------+---------+---------+---------+---------------+");
-    for (int tt = jTPCCTData.TT_NEW_ORDER; tt <= jTPCCTData.TT_DELIVERY_BG; tt++) {
+    for (int tt = jTPCCTData.TT_NEW_ORDER; tt <= jTPCCTData.TT_STORE; tt++) {
       double count;
       double percent;
       double mean;
@@ -81,7 +82,7 @@ public class jTPCCMonkey {
 
       count = (double) (sumStats.histCounter[tt].numTrans);
       percent = count / total_count * 100.0;
-      if (tt == jTPCCTData.TT_DELIVERY_BG)
+      if (tt == jTPCCTData.TT_STORE)
         percent = 0.0;
       mean = (double) (sumStats.histCounter[tt].sumMS) / 1000.0 / count;
       max = (double) (sumStats.histCounter[tt].maxMS) / 1000.0;
@@ -138,7 +139,7 @@ public class jTPCCMonkey {
      */
     log.info("dumping result histogram");
     statsDivider = Math.log(jTPCCResult.STATS_CUTOFF * 1000.0) / (double) (jTPCCResult.NUM_BUCKETS);
-    for (int tt = jTPCCTData.TT_NEW_ORDER; tt <= jTPCCTData.TT_DELIVERY_BG; tt++) {
+    for (int tt = jTPCCTData.TT_NEW_ORDER; tt <= jTPCCTData.TT_STORE; tt++) {
       for (int b = 0; b < jTPCCResult.NUM_BUCKETS; b++) {
         double edge = Math.exp((double) (b + 1) * statsDivider) / jTPCCResult.NUM_BUCKETS;
 
@@ -269,6 +270,12 @@ public class jTPCCMonkey {
             think_time = 5.0;
             break;
 
+		  case jTPCCTData.TT_STORE:
+			processStoreResult(tdata);
+			result.collect(tdata);
+			think_time = 1.0;
+			break;
+
           default:
             think_time = 0.0;
             break;
@@ -308,6 +315,11 @@ public class jTPCCMonkey {
             generateDelivery(tdata);
             key_mean = 1.0;
             break;
+
+		  case jTPCCTData.TT_STORE:
+			generateStore(tdata);
+			key_mean = 1.0;
+			break;
 
           default:
             key_mean = 0.0;
@@ -698,6 +710,37 @@ public class jTPCCMonkey {
       }
     }
 
+	private void generateStore(jTPCCTData tdata) {
+		jTPCCTData.StoreData screen = tdata.StoreData();
+
+		screen.w_id = tdata.term_w_id;
+		screen.i_id = (int)randomInt(1, 100000);
+		screen.quantity = (int)randomInt(1, 100);
+
+		tdata.store = screen;
+
+	}
+
+	private void processStoreResult(jTPCCTData tdata) {
+		jTPCCTData.StoreData screen = tdata.store;
+
+		tdata.store = null;
+		if (!jTPCC.traceTerminalIO)
+			return;
+
+		synchronized (trace_terminal_lock) {
+			termlog.info(
+				"monkey-{}, +------------------------------------------------------------------------------+",
+				this.m_id);
+			termlog.info("monkey-{},                                  Store", this.m_id);
+			termlog.info("monkey-{}, Warehouse: {}", this.m_id, screen.w_id);
+			termlog.info("monkey-{}, ", this.m_id);
+			termlog.info(
+				"monkey-{}, +------------------------------------------------------------------------------+",
+				this.m_id);
+		}
+	}
+
     private int nextTransactionType() {
       double chance = randomDouble() * 100.0;
 
@@ -715,6 +758,9 @@ public class jTPCCMonkey {
 
       if (chance <= jTPCC.deliveryWeight)
         return jTPCCTData.TT_DELIVERY;
+
+	  if (chance <= jTPCC.storeWeight)
+		return jTPCCTData.TT_STORE;
 
       return jTPCCTData.TT_NEW_ORDER;
     }

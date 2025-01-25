@@ -75,6 +75,7 @@ public class jTPCC {
   public static double orderStatusWeight;
   public static double deliveryWeight;
   public static double stockLevelWeight;
+  public static double storeWeight;
   public static double rollbackPercent;
 
   private OSCollector osCollector = null;
@@ -187,7 +188,8 @@ public class jTPCC {
     orderStatusWeight = Double.parseDouble(getProp(ini, "orderStatusWeight"));
     deliveryWeight = Double.parseDouble(getProp(ini, "deliveryWeight"));
     stockLevelWeight = Double.parseDouble(getProp(ini, "stockLevelWeight"));
-    newOrderWeight = 100.0 - paymentWeight - orderStatusWeight - deliveryWeight - stockLevelWeight;
+    storeWeight = Double.parseDouble(getProp(ini, "storeWeight"));
+    newOrderWeight = 100.0 - paymentWeight - orderStatusWeight - deliveryWeight - stockLevelWeight - storeWeight;
     if (newOrderWeight < 0.0) {
       log.error("main, newOrderWeight is below zero");
       return;

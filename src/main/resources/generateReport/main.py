@@ -18,7 +18,8 @@ def main():
         'ORDER_STATUS': 5.0,
         'STOCK_LEVEL': 20.0,
         'DELIVERY':     5.0,
-        'DELIVERY_BG': 80.0
+        'DELIVERY_BG': 80.0,
+		'STORE':      100.0
     }
     opt_help = False
     errors = False

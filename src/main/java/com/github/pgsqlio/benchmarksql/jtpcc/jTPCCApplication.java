@@ -17,4 +17,6 @@ public class jTPCCApplication {
   public void executeStockLevel(jTPCCTData.StockLevelData screen, long txn_id) throws Exception {}
 
   public void executeDeliveryBG(jTPCCTData.DeliveryBGData screen, long txn_id) throws Exception {}
+
+  public void executeStore(jTPCCTData.StoreData screen, long txn_id) throws Exception {}
 }
