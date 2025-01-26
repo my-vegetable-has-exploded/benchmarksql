@@ -296,7 +296,7 @@ public class jTPCC {
       cfgStmt.close();
       dbConn.rollback();
 
-	  PreparedStatement txnlogStmt = dbConn.prepareStatement("DELETE FROM bmsql_txnlog");
+	  PreparedStatement txnlogStmt = dbConn.prepareStatement("TRUNCATE TABLE bmsql_txnlog");
 	  txnlogStmt.executeUpdate();
 	  txnlogStmt.close();
 	  dbConn.commit();

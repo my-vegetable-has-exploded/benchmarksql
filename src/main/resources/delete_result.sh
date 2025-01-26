@@ -4,7 +4,7 @@
 API_URL="http://133.133.135.56:5000/result_delete/"
 
 # 循环删除 run_id 从 660 到 720 的数据
-for run_id in {660..720}; do
+for run_id in {696..737}; do
     # 构造完整的 API 请求 URL
     url="${API_URL}?run_id=${run_id}"
 

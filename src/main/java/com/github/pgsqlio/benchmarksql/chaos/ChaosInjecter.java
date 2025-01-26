@@ -183,12 +183,18 @@ public class ChaosInjecter {
 					java.util.Collections.shuffle(zones, new java.util.Random());
 				}
 			} else if (parts[1].equals("random")) {
+				if (config.leaderzone != null) {
+					throw new Exception("leader zone set, skip random zone");
+				}
 				if (config.zones.size() == 0) {
 					throw new Exception("zones not set");
 				}
 				zones = new ArrayList<String>(config.zones);
 				java.util.Collections.shuffle(zones, new java.util.Random());
 			} else {
+				if (config.leaderzone != null) {
+					throw new Exception("leader zone set, skip not specified zone");
+				}
 				throw new Exception("invalid zone constraint: " + constraint0);
 			}
 			// cache zones

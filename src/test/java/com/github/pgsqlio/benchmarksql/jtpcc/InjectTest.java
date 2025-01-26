@@ -65,6 +65,10 @@ public class InjectTest {
 			assertEquals(follower_zone1List.size(), 1);
 			assertTrue(follower_zone1List.get(0).equals("obcluster-1-zone2-st8k4g") || follower_zone1List.get(0).equals("obcluster-1-zone2-zmrqjd") || follower_zone1List.get(0).equals("obcluster-1-zone3-4jqrvf") || follower_zone1List.get(0).equals("obcluster-1-zone3-pvfsh2"));
 
+			// List<String> random_zoneList = injecter.generateScope(config, "$zone.random-storage-1");
+			// assertEquals(random_zoneList.size(), 1);
+			// assertTrue(random_zoneList.get(0).equals("obcluster-1-zone1-f4zc55") || random_zoneList.get(0).equals("obcluster-1-zone1-vlqshr") || random_zoneList.get(0).equals("obcluster-1-zone2-st8k4g") || random_zoneList.get(0).equals("obcluster-1-zone2-zmrqjd") || random_zoneList.get(0).equals("obcluster-1-zone3-4jqrvf") || random_zoneList.get(0).equals("obcluster-1-zone3-pvfsh2"));
+
 			List<String> allList = injecter.generateScope(config, "$storage-0");
 			assertEquals(allList.size(), 6);
 

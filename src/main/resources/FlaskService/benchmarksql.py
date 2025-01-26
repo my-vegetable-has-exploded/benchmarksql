@@ -491,6 +491,10 @@ class RunAllFaults(threading.Thread):
             self.bench.status_data['run_count'] += 1
             if self.run_each(fault_file) is True:
                 self.run_id += 1
+            	# sleep 30 seconds
+                time.sleep(30)
+            # clear job output
+            self.bench.current_job_output = ""
         self.end_run_id = self.run_id
         rpos, rtos = [], []
         # read metrics from result_dir and compute average result of metrics
@@ -542,6 +546,10 @@ class RunAllFaults(threading.Thread):
         origin_props['scenario'] = fault_file
         with open(run_props, 'wb') as fd:
             origin_props.store(fd, 'utf-8')
+        # clear and store last properties
+        with open(last_props, 'wb') as fd:
+            origin_props.store(fd, 'utf-8')
+
         with open(os.path.join(self.bench.data_dir, 'run_seq.dat'), 'w') as fd:
             fd.write(str(self.run_id - 1) + '\n')
 
