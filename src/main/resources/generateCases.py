@@ -5,7 +5,7 @@ FAULT_TYPES = {
     "fail": {"template": "fail.yaml", "params": {}},
     "io_fault": {"template": "io_fault.yaml", "params": {"percent": [100, 80, 50, 20]}},
     "net_delay": {"template": "net_delay.yaml", "params": {"latency": ["1ms", "4ms", "16ms"]}},
-    "net_loss": {"template": "net_loss.yaml", "params": {"loss": [100, 80, 50, 20]}},
+    "net_loss": {"template": "net_loss.yaml", "params": {"loss": ["100", "80", "50", "20"]}},
 }
 
 # 定义故障位置生成函数

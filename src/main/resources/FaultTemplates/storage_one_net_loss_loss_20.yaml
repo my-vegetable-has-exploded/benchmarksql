@@ -1,4 +1,4 @@
 duration: 120s
 injectpods: $storage-1
-loss: 20
+loss: '20'
 template: net_loss.yaml
