@@ -9,6 +9,7 @@ spec:
   selector:
     pods:
       $NAMESPACE: '$INJECTPODS'
+  # TODO: split volumepath of compute and storage
   volumePath: '$VOLUMEPATH'
   errno: 5
   percent: '$PERCENT'
