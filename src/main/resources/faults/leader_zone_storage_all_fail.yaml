@@ -1,0 +1,10 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata: {name: fail-pod, namespace: chaos-testing}
+spec:
+  action: pod-failure
+  mode: all
+  duration: 120s
+  selector:
+    pods:
+      oceanbase: [obcluster-1-zone1-f4zc55, obcluster-1-zone1-vlqshr]

@@ -1,14 +1,16 @@
 apiVersion: chaos-mesh.org/v1alpha1
-kind: NetworkChaos
+kind: IOChaos
 metadata:
-  name: loss
+  name: io-fault-example
+  namespace: chaos-testing
 spec:
-  action: loss
-  mode: one
+  action: fault
+  mode: all
   selector:
     namespaces:
       - '$NAMESPACE'
     labelSelectors: '$PODNAME'
-  loss:
-    loss: '$LOSS'
+  volumePath: '$VOLUMEPATH'
+  errno: 5
+  percent: '$PERCENT'
   duration: '$DURATION'

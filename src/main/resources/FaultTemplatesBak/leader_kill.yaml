@@ -1,0 +1,9 @@
+template: "kill_pod_by_labels.yaml"
+# select the leader pod
+podname: "$LEADER"
+namespace: "$NAMESPACE"
+duration: "0s"
+# faulttime: "10min"
+# in milliseconds
+# faulttxn: "neworder"
+# faultsql: "3"

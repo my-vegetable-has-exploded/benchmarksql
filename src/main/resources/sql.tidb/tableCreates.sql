@@ -138,3 +138,8 @@ create table bmsql_stock (
 CREATE TABLE bmsql_txnlog (
   txn_id  BIGINT  not null
 );
+
+-- CREATE TABLE bmsql_txnlog (
+--   txn_id  BIGINT  not null
+--   thread_id BIGINT not null
+-- ) partition by hash(thread_id) partitions 1024;

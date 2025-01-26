@@ -1,0 +1,4 @@
+duration: 120s
+injectpods: $compute-1
+percent: 50
+template: io_fault.yaml

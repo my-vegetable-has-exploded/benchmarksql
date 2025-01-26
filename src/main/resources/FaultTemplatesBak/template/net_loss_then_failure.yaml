@@ -1,0 +1,37 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata:
+  name: net-loss-then-failure-example
+spec:
+  entry: net-loss-then-failure 
+  templates:
+    - name: net-loss-then-failure
+      templateType: Serial
+      deadline: 600m
+      children:
+        - workflow-loss-chaos
+        # - suspending
+        - workflow-failure-chaos
+    - name: workflow-loss-chaos
+      templateType: NetworkChaos
+      deadline: '$LOSSDURATION'
+      networkChaos:
+        mode: all
+        action: loss
+        selector:
+          namespaces: 
+            - '$NAMESPACE'
+          labelSelectors: '$RANDOMPOD1'
+        loss:
+          loss: '$LOSS'
+    - name: workflow-failure-chaos
+      templateType: PodChaos
+      # TODO: may need to relax ?
+      deadline: '$FAILUREDURATION'
+      podChaos:
+        action: pod-failure
+        mode: all
+        selector:
+          namespaces:
+            - '$NAMESPACE'
+          labelSelectors: '$RANDOMPOD2'

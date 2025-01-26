@@ -65,11 +65,19 @@ public class InjectTest {
 			assertEquals(follower_zone1List.size(), 1);
 			assertTrue(follower_zone1List.get(0).equals("obcluster-1-zone2-st8k4g") || follower_zone1List.get(0).equals("obcluster-1-zone2-zmrqjd") || follower_zone1List.get(0).equals("obcluster-1-zone3-4jqrvf") || follower_zone1List.get(0).equals("obcluster-1-zone3-pvfsh2"));
 
+			List<String> allList = injecter.generateScope(config, "$storage-0");
+			assertEquals(allList.size(), 6);
+
+
 			List<String> testRoleList = injecter.generateScope(config, "$zone.leader-test-0");
 			assertEquals(testRoleList.size(), 1);
 			assertEquals(testRoleList.get(0), "obcluster-1-zone1-f4zc55");
 
-			ChaosFault fault = injecter.initialFault(config, "leader_zone_all_fail.yaml");
+			testRoleList = injecter.generateScope(config, "$test-0");
+			assertEquals(testRoleList.size(), 1);
+			assertEquals(testRoleList.get(0), "obcluster-1-zone1-f4zc55");
+
+			ChaosFault fault = injecter.initialFault(config, "leader_zone_storage_all_fail.yaml");
 			String faultPath = fault.file;
 			// read yaml file
 			InputStream input = new FileInputStream(faultPath);
@@ -91,7 +99,7 @@ public class InjectTest {
 			"\nspec:"+
 			"\n  action: pod-failure"+
 			"\n  mode: all"+
-			"\n  duration: 0s"+
+			"\n  duration: 120s"+
 			"\n  selector:"+
 			"\n    pods:"+
 			"\n      oceanbase:"+

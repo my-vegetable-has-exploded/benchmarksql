@@ -1,0 +1,40 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata:
+  name: failure-then-unwrite-example
+spec:
+  entry: failure-then-unwrite
+  templates:
+    - name: failure-then-unwrite
+      templateType: Serial
+      deadline: 600m
+      children:
+        # - suspending
+        - workflow-failure-chaos
+        - workflow-write-chaos
+    - name: workflow-failure-chaos
+      templateType: PodChaos
+      # TODO: may need to relax ?
+      deadline: '$FAILUREDURATION'
+      podChaos:
+        action: pod-failure
+        mode: all
+        selector:
+          namespaces:
+            - '$NAMESPACE'
+          labelSelectors: '$RANDOMPOD1'
+    - name: workflow-write-chaos
+      templateType: IOChaos
+      deadline: '$UNWRITEDURATION'
+      ioChaos:
+        mode: all
+        action: fault
+        selector:
+          namespaces: 
+            - '$NAMESPACE'
+          labelSelectors: '$RANDOMPOD2'
+        # methods:
+        #   - write  # 限制写操作
+        volumePath: '$VOLUMEPATH'
+        errno: 5
+        percent: 99

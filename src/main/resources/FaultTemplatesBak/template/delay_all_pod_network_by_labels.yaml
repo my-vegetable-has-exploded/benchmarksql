@@ -1,0 +1,16 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: delay
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - '$NAMESPACE'
+    labelSelectors: '$PODNAME'
+  delay:
+    latency: '$LATENCY'
+    correlation: '0'
+    jitter: '0ms'
+  duration: '$DURATION'

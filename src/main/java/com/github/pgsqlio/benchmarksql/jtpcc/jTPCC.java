@@ -23,6 +23,7 @@ import org.apache.logging.log4j.Logger;
 import com.github.pgsqlio.benchmarksql.application.AppGeneric;
 import com.github.pgsqlio.benchmarksql.application.oracle.AppOracleStoredProc;
 import com.github.pgsqlio.benchmarksql.application.postgres.AppPostgreSQLStoredProc;
+import com.github.pgsqlio.benchmarksql.chaos.ChaosInjecter;
 import com.github.pgsqlio.benchmarksql.oscollector.OSCollector;
 
 /**
@@ -136,6 +137,18 @@ public class jTPCC {
     }
 
 	sysConfig = new SystemConfig(ini);
+
+	// check if the fault is available
+	try {
+	  ChaosInjecter injecter = ChaosInjecter.getInstance(this);
+	  for (String fault: sysConfig.faults) {
+		injecter.initialFault(sysConfig, fault);
+	  }
+	} catch (Exception e) {
+	  log.error("main, could not init fault file, " + e.getMessage());
+	  // Don't exit this case, exit with error code
+      System.exit(1);
+	}
 
     /*
      * Get all the configuration settings

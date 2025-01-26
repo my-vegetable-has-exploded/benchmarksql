@@ -1,0 +1,15 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: IOChaos
+metadata:
+  name: io-fault
+  namespace: chaos-testing
+spec:
+  action: fault
+  mode: all
+  selector:
+    pods:
+      $NAMESPACE: '$INJECTPODS'
+  volumePath: '$VOLUMEPATH'
+  errno: 5
+  percent: '$PERCENT'
+  duration: '$DURATION'

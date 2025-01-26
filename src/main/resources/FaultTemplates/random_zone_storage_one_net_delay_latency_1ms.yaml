@@ -1,0 +1,4 @@
+duration: 120s
+injectpods: $zone.random-storage-1
+latency: 1ms
+template: net_delay.yaml

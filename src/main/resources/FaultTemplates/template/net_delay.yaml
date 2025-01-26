@@ -1,14 +1,14 @@
 apiVersion: chaos-mesh.org/v1alpha1
 kind: NetworkChaos
 metadata:
-  name: network-delay
+  name: net-delay
   namespace: chaos-testing
 spec:
   action: delay
   mode: all
   selector:
     pods:
-    '$NAMESPACE':'$INJECTPODS'
+      $NAMESPACE: '$INJECTPODS'
   delay:
     latency: '$LATENCY'
     correlation: '0'

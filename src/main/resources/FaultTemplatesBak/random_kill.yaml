@@ -1,0 +1,8 @@
+template: "kill_pod_by_labels.yaml"
+podname: "$RANDOMPOD1"
+namespace: "$NAMESPACE"
+duration: "180s"
+faulttime: "10min"
+# in milliseconds
+# faulttxn: "neworder"
+# faultsql: "3"

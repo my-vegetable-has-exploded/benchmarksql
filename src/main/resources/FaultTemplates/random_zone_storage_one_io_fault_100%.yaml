@@ -1,0 +1,5 @@
+template: "io_fault.yaml"
+# select the leader pod
+podname: "$zone.random-storage-1"
+duration: "120s"
+percent: 100

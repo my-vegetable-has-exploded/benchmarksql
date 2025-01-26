@@ -1,0 +1,4 @@
+duration: 120s
+injectpods: $storage-0
+latency: 16ms
+template: net_delay.yaml

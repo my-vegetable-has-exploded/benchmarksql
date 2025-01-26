@@ -1,0 +1,8 @@
+template: "iofault_pod_by_labels.yaml"
+# select the leader pod
+podname: "$RANDOMPOD1"
+namespace: "$NAMESPACE"
+duration: "180s"
+percent: 95
+volumepath: "$VOLUMEPATH"
+faulttime: "10min"

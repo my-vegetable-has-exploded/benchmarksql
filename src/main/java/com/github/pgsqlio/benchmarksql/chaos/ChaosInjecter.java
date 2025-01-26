@@ -147,7 +147,6 @@ public class ChaosInjecter {
 		// zone.follower.1 means pods need to be in follower1 zone.
 		// zone.random.1 means any random zone, zone.random2 means any one random zones
 		// but different from zone.random1.
-		// TODO add region settings
 		// the second last constraint is the role, there is storage and compute, default
 		// the last constraint is the pod list number, for example, 1 means only one
 		// pod, 0 means all pods satisfy the constraints.

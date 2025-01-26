@@ -1,0 +1,4 @@
+template: "fail_and_kill.yaml"
+failureduration: "3m"
+# total duration, required field
+duration: "180s"

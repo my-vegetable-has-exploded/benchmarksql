@@ -1,16 +1,12 @@
 apiVersion: chaos-mesh.org/v1alpha1
-kind: IOChaos
+kind: PodChaos
 metadata:
-  name: io-fault-example
+  name: kill-one-by-labels
   namespace: chaos-testing
 spec:
-  action: fault
+  action: pod-kill
   mode: one
   selector:
     namespaces:
       - '$NAMESPACE'
     labelSelectors: '$PODNAME'
-  volumePath: '$VOLUMEPATH'
-  errno: 5
-  percent: 100
-  duration: '$DURATION'

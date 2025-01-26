@@ -1,0 +1,5 @@
+template: "failure_then_unwrite.yaml"
+failureduration: "1m"
+unwriteduration: "5m"
+# total duration, required field
+duration: "1500s"

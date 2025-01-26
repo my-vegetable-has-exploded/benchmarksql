@@ -1,0 +1,4 @@
+duration: 120s
+injectpods: $zone.follower.1-storage-0
+percent: 100
+template: io_fault.yaml

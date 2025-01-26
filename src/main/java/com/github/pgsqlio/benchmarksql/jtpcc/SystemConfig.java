@@ -57,6 +57,7 @@ public class SystemConfig {
 			for (String zone : zonesStr.split(",")) {
 				zones.add(zone.strip());
 				String podsInZoneString = getProp(p, "sys." + zone.strip() + ".pods");
+				logger.info("system config, {}.pods={}", zone.strip(), podsInZoneString);
 				ArrayList<String> podsInZone = new ArrayList<String>();
 				for (String pod : podsInZoneString.split(",")) {
 					podsInZone.add(pod.strip());

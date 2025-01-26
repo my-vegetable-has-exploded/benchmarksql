@@ -1,7 +1,7 @@
 apiVersion: chaos-mesh.org/v1alpha1
 kind: PodChaos
 metadata:
-  name: fail-pod-by-labels
+  name: kill-pod-by-labels
   namespace: chaos-testing
 spec:
   action: pod-kill

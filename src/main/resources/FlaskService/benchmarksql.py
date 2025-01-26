@@ -256,6 +256,20 @@ class BenchmarkSQL:
             return str(e)
         return log
 
+    def get_fault(self, run_id):
+        try:
+            run_id = int(run_id)
+        except Exception as e:
+            return "What?"
+
+        html_path = os.path.join(self.data_dir, "result_{0:06d}".format(run_id), 'data/fault.yaml')
+        try:
+            with open(html_path, 'r') as fd:
+                log = fd.read()
+        except Exception as e:
+            return str(e)
+        return log
+
     def delete_result(self, run_id):
         try:
             run_id = int(run_id)
@@ -412,6 +426,14 @@ class RunBenchmark(threading.Thread):
 
         if rc != 0:
             self.bench.add_job_output("\n\nBenchmarkSQL had exit code {0}\n".format(rc))
+			# set current job state to RUNFAILED
+            self.bench.lock.acquire()
+            for entry in self.bench.status_data['results']:
+                if entry['name'] == self.bench.current_job_name:
+                    entry['state'] = 'RUNFAILED'
+                    break
+            self.bench.save_status()
+            self.bench.lock.release()
 
         # ----
         # Read the current run properties and parse them this time.
@@ -446,6 +468,9 @@ class RunBenchmark(threading.Thread):
         else:
             self.bench.add_job_output("\nBenchmarkSQL run complete\n")
 
+        # create result dir if not exists
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
         result_log = os.path.join(result_dir, 'console.log')
         with codecs.open(result_log, 'w', encoding='utf8') as fd:
             fd.write(self.bench.current_job_output)
@@ -464,8 +489,8 @@ class RunAllFaults(threading.Thread):
         fault_files = [f for f in os.listdir(self.bench.faults_dis) if os.path.isfile(os.path.join(self.bench.faults_dis, f))]
         for fault_file in fault_files:
             self.bench.status_data['run_count'] += 1
-            self.run_each(fault_file)
-            self.run_id += 1
+            if self.run_each(fault_file) is True:
+                self.run_id += 1
         self.end_run_id = self.run_id
         rpos, rtos = [], []
         # read metrics from result_dir and compute average result of metrics
@@ -477,6 +502,7 @@ class RunAllFaults(threading.Thread):
                 for row in csv_reader:
                     rpos.append(float(row['rpo']))
                     rtos.append(float(row['rto']))
+
         # compute average rpo and rto
         avg_rpo = sum(rpos) / (self.end_run_id - self.start_run_id)
         avg_rto = sum(rtos) / (self.end_run_id - self.start_run_id)
@@ -488,7 +514,12 @@ class RunAllFaults(threading.Thread):
         run_props = os.path.join(self.bench.data_dir, 'run.properties')
         result_dir = os.path.join(self.bench.data_dir, "result_{0:06d}".format(self.run_id))
 
-            # update bench.status_data['results']
+		# clear result_dir if exists
+        if os.path.exists(result_dir):
+            shutil.rmtree(result_dir)
+        # os.makedirs(result_dir)
+
+        # update bench.status_data['results']
         self.bench.status_data['results'] = [{
                 'run_id':   self.run_id,
                 'name':     "result_{0:06d}".format(self.run_id),
@@ -531,6 +562,20 @@ class RunAllFaults(threading.Thread):
 
         if rc != 0:
             self.bench.add_job_output("\n\nBenchmarkSQL had exit code {0}\n".format(rc))
+            # RUNFAILED, just skip current case
+            # remove current status_data and exit
+            self.bench.lock.acquire()
+            for entry in self.bench.status_data['results']:
+                if entry['name'] == self.bench.current_job_name:
+                    # remove entry from status_data['results']
+                    self.bench.status_data['results'].remove(entry)
+                    break
+            self.bench.save_status()
+            # clear job_output
+
+            self.bench.current_job_output = ""
+            self.bench.lock.release()
+            return False
 
         # ----
         # Read the current run properties and parse them this time.
@@ -576,9 +621,12 @@ class RunAllFaults(threading.Thread):
         self.bench.current_job_name = ""
         self.bench.save_status()
 
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
         result_log = os.path.join(result_dir, 'console.log')
         with codecs.open(result_log, 'w', encoding='utf8') as fd:
             fd.write(self.bench.current_job_output)
+        return True
 
 class RunDatabaseBuild(threading.Thread):
     def __init__(self, bench):

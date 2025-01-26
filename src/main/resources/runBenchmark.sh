@@ -25,3 +25,10 @@ while true ; do
     kill -0 $PID 2>/dev/null || break
     sleep 1
 done
+
+# get exit code
+wait $PID
+RC=$?
+
+# return same exit code
+exit $RC

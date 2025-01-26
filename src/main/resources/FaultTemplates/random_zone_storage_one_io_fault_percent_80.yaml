@@ -1,0 +1,4 @@
+duration: 120s
+injectpods: $zone.random-storage-1
+percent: 80
+template: io_fault.yaml

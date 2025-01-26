@@ -1,0 +1,3 @@
+duration: 120s
+injectpods: $zone.random-storage-0
+template: fail.yaml

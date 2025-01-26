@@ -1,0 +1,6 @@
+template: "net_loss_then_failure.yaml"
+lossduration: "30s"
+failureduration: "1m"
+loss: "90"
+# total duration, required field
+duration: "90s"

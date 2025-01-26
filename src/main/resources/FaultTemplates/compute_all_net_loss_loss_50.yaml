@@ -1,0 +1,4 @@
+duration: 120s
+injectpods: $compute-0
+loss: 50
+template: net_loss.yaml
