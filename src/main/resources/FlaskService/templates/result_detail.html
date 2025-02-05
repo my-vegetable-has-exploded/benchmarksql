@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result Details</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* 自定义表格样式 */
+        .table-custom {
+            border-collapse: separate;
+            border-spacing: 0;
+            border: 2px solid #007bff; /* 表格外边框颜色 */
+            border-radius: 10px; /* 表格圆角 */
+            overflow: hidden; /* 确保边框圆角生效 */
+        }
+        .table-custom th,
+        .table-custom td {
+            border: 1px solid #dee2e6; /* 单元格边框颜色 */
+            padding: 12px; /* 单元格内边距 */
+            text-align: center; /* 单元格内容居中 */
+        }
+        .table-custom thead th {
+            background-color: #007bff; /* 表头背景颜色 */
+            color: white; /* 表头文字颜色 */
+            border-bottom: 2px solid #0056b3; /* 表头底部边框 */
+        }
+        .table-custom tbody tr:hover {
+            background-color: #f8f9fa; /* 行悬停效果 */
+        }
+        .btn-sm {
+            margin: 2px; /* 按钮间距 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="my-4 text-center">Result Details for Run ID: {{ metric_datas[0].run_id }}</h1>
+        <table class="table table-custom">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Fault Name</th>
+                    <th>Run ID</th>
+                    <th>RPO</th>
+                    <th>RTO</th>
+                    <th>Recovery Time Factor</th>
+                    <th>Total Performance Factor</th>
+                    <th>Absorption Factor</th>
+                    <th>Recovery Factor</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for metric in metric_datas %}
+                <tr>
+                    <td>{{ metric.fault_name }}</td>
+                    <td>{{ metric.run_id }}</td>
+                    <td>{{ metric.rpo }}</td>
+                    <td>{{ metric.rto }}</td>
+                    <td>{{ metric.recovery_time_factor }}</td>
+                    <td>{{ metric.total_performance_factor }}</td>
+                    <td>{{ metric.absorption_factor }}</td>
+                    <td>{{ metric.recovery_factor }}</td>
+                    <td>
+                        <a href="{{ url_for('result_fault') }}?run_id={{ metric.run_id }}" class="btn btn-info btn-sm" target="_blank">Show Fault</a>
+                        <a href="{{ url_for('result_log') }}?run_id={{ metric.run_id }}" class="btn btn-warning btn-sm" target="_blank">Show Log</a>
+                        <a href="{{ url_for('result_show') }}?run_id={{ metric.run_id }}" class="btn btn-success btn-sm" target="_blank">Show Report</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

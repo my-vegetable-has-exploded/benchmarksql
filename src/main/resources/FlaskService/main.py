@@ -200,6 +200,12 @@ def result_delete():
     bench.delete_result(args['run_id'])
     return flask.redirect(flask.url_for("index"))
 
+@app.route('/result_detail/')
+def result_detail():
+	args = flask.request.args
+	metric_datas = bench.get_allmetrics(args['run_id'])
+	return flask.render_template('result_detail.html', metric_datas=metric_datas)	
+
 def upload_properties():
     print("files:", flask.request.files, file=sys.stderr)
     pass

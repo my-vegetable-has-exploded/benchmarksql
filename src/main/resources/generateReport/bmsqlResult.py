@@ -68,7 +68,7 @@ class bmsqlResult:
         with open(metrics_fname, 'w', newline='') as fd:
             wrt = csv.writer(fd)
             wrt.writerow(['rto', 'rpo', 'recovery_time_factor', 'total_performance_factor', 'absorption_factor', 'recovery_factor'])
-            # wrt.writerow([self.rto, self.rpo, self.steady_metric['recovery_time_factor'], self.steady_metric['total_performance_factor'], self.steady_metric['absorption_factor'], self.steady_metric['recovery_factor']])
+            wrt.writerow([self.rto, self.rpo, self.steady_metrics[-1]['recovery_time_factor'], self.steady_metrics[-1]['total_performance_factor'], self.steady_metrics[-1]['absorption_factor'], self.steady_metrics[-1]['recovery_factor']])
 
         # self.stage_latency()
         # self.stage_throughput()
@@ -490,9 +490,8 @@ class bmsqlResult:
         # ----
         # Use pymser to find the steady state
         # ----
+        txn_stat = savgol_filter(txn_stat, 10, 2)
         sd = txn_stat[fault_start:period_end]
-        sd = sd[:]
-        sd = savgol_filter(sd, 10, 2)
         steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=True, uncertainty='uSD', print_results=True)
 
         mse = steady_result['MSE']

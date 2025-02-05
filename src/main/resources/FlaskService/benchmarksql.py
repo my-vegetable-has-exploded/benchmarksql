@@ -269,6 +269,49 @@ class BenchmarkSQL:
         except Exception as e:
             return str(e)
         return log
+    
+    def get_allmetrics(self, run_id):
+        try:
+            run_id = int(run_id)
+        except Exception as e:
+            return "What?"
+
+        # get start_run_id and end_run_id from status_data
+        current_status_data = [entry for entry in self.status_data['results'] if entry['run_id'] == run_id ][0]
+        start_run_id = int(current_status_data['start_run_id'])
+        end_run_id = int(current_status_data['end_run_id'])
+        metric_datas = []
+        # recursively read info from result_dir for each run_id
+        for run_id in range(start_run_id, end_run_id):
+            result_dir = os.path.join(self.data_dir, "result_{0:06d}".format(run_id))
+            metric_data = {}
+            metric_data['run_id'] = run_id
+            # read fault name from result_dir/data/faultInfo.csv
+            with open(os.path.join(result_dir, 'data', 'faultInfo.csv'), 'r') as fd:
+                # name,start,end,duration
+                # ./faults/storage_all_net_delay_latency_1ms.yaml,1737911387618,1737911517922,120000
+                csv_reader = csv.DictReader(fd)
+                for row in csv_reader:
+                    fault_name = row['name']
+                    metric_data['fault_name'] = fault_name
+                    break
+            # read metrics from result_dir/data/metrics.csv
+            with open(os.path.join(result_dir, 'data', 'metrics.csv'), 'r') as fd:
+                # rto,rpo,recovery_time_factor,total_performance_factor,absorption_factor,recovery_factor
+                # 0.0,239640,0,-1,-1,0.9889908256880735
+                csv_reader = csv.DictReader(fd)
+                for row in csv_reader:
+                    metric_data['rpo'] = row['rpo']
+                    metric_data['rto'] = row['rto']
+                    metric_data['recovery_time_factor'] = row['recovery_time_factor']
+                    metric_data['total_performance_factor'] = row['total_performance_factor']
+                    metric_data['absorption_factor'] = row['absorption_factor']
+                    metric_data['recovery_factor'] = row['recovery_factor']
+                    break
+            metric_datas.append(metric_data)
+        # sort metric_datas by fault_name
+        metric_datas = sorted(metric_datas, key=lambda x: x['fault_name'])
+        return metric_datas        
 
     def delete_result(self, run_id):
         try:
@@ -336,6 +379,15 @@ class BenchmarkSQL:
             return
 
         run_id = self.status_data['run_count'] + 1
+        self.status_data['run_count'] += 1
+        self.status_data['results'] = [
+            {
+                'run_id':   run_id,
+                'name':     "result_{0:06d}".format(run_id),
+                'start':    time.asctime(),
+                'state':    'ALLRUNNING',
+            }] + self.status_data['results']
+        self.save_status()
 
         self.current_job = RunAllFaults(self, run_id)
         self.current_job_output = ""
@@ -480,16 +532,17 @@ class RunAllFaults(threading.Thread):
         threading.Thread.__init__(self)
 
         self.bench = bench
-        self.run_id = run_id
-        self.start_run_id = run_id
+        self.init_run_id = run_id
+        self.run_id = run_id + 1
+        self.start_run_id = run_id + 1
         self.end_run_id = 0
         self.proc = None
 
     def run(self):
         fault_files = [f for f in os.listdir(self.bench.faults_dis) if os.path.isfile(os.path.join(self.bench.faults_dis, f))]
         for fault_file in fault_files:
-            self.bench.status_data['run_count'] += 1
             if self.run_each(fault_file) is True:
+                self.bench.status_data['run_count'] += 1
                 self.run_id += 1
             	# sleep 30 seconds
                 time.sleep(30)
@@ -512,6 +565,16 @@ class RunAllFaults(threading.Thread):
         avg_rto = sum(rtos) / (self.end_run_id - self.start_run_id)
         line = "Average RPO: {0}, Average RTO: {1}\n".format(avg_rpo, avg_rto)
         self.bench.add_job_output(line)
+        # change current job state to ALLFINISHED
+        self.bench.lock.acquire()
+        for entry in self.bench.status_data['results']:
+            if entry['run_id'] == self.init_run_id:
+                entry['state'] = 'ALLFINISHED'
+                entry['start_run_id'] = self.start_run_id
+                entry['end_run_id'] = self.end_run_id
+                break
+        self.bench.save_status()
+        self.bench.lock.release()
 
     def run_each(self, fault_file):
         last_props = os.path.join(self.bench.data_dir, 'last.properties')

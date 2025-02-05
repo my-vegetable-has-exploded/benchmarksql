@@ -120,6 +120,13 @@
 	    <td><a href="{{ url_for('result_show') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Report</a></td>
 	    <td><a href="{{ url_for('result_delete') }}?run_id={{ run_id }}">Delete&nbsp;Result</a></td>
 	  {% endif %}
+	  {% if res_state == "ALLFINISHED" %}
+	    <td><a href="{{ url_for('result_detail') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Detail</a></td>
+	    <td><a href="{{ url_for('result_delete') }}?run_id={{ run_id }}">Delete&nbsp;Result</a></td>
+	  {% endif %}
+	  {% if res_state == "ALLRUNNING" %}
+	    <td colspan="4" align="center">In&nbsp;Progress</td>
+	  {% endif %}
 	</tr>
       {% endfor %}
     </table>
