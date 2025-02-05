@@ -1274,10 +1274,10 @@ public class AppGeneric extends jTPCCApplication {
 		stmt.setInt(3, i_id);
 		stmt.executeUpdate();
 
-		// PreparedStatement tracestmt;
-		// tracestmt = stmtTxnLog;
-		// tracestmt.setLong(1, txn_id);
-		// tracestmt.executeUpdate();
+		PreparedStatement tracestmt;
+		tracestmt = stmtTxnLog;
+		tracestmt.setLong(1, txn_id);
+		tracestmt.executeUpdate();
 
 		dbConn.commit();
 	} catch (SQLException se) {

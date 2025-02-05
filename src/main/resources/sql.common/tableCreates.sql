@@ -122,4 +122,6 @@ create table bmsql_stock (
   s_dist_10    char(24)
 );
 
-
+CREATE TABLE bmsql_txnlog (
+  txn_id  BIGINT  not null
+);

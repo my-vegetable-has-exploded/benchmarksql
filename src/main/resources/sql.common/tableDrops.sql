@@ -18,3 +18,4 @@ drop table bmsql_district;
 
 drop table bmsql_warehouse;
 
+drop table bmsql_txnlog;

@@ -357,9 +357,9 @@ class bmsqlResult:
         """
         Returns the recovery point objective in milliseconds.
         """
-        if self.faultinfo == {}:
-            print("No fault found")
-            return -1
+        # if self.faultinfo == {}:
+        #     print("No fault found")
+        #     return -1
 
         # get all txn from trace file, and compare with txn file
         # find all loss txn_id who are in trace file but are not in txn file
@@ -379,6 +379,7 @@ class bmsqlResult:
                 if int(row['error'])==1 or int(row['rollback'])==1:
                     continue
                 if row['txn_id'] not in persisted_txn_ids:
+                    print(f"txn_id {row['txn_id']} is not in txn file")
                     loss_txn_intervals.append((int(row['start']), int(row['end'])))
 
         loss_txn_intervals.sort()
