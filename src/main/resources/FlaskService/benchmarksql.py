@@ -64,8 +64,10 @@ class BenchmarkSQL:
         self.current_job = None
         self.current_job_id = 0
         self.current_job_name = ""
+        self.current_sub_job_name = ""
         self.current_job_output = ""
         self.current_job_start = 0.0
+        self.finished_reson = ""
         self.current_job_properties = self.get_properties()
 
 		# pending properties
@@ -142,6 +144,8 @@ class BenchmarkSQL:
                 for entry in self.status_data['results']:
                     if entry['name'] == self.current_job_name:
                         if entry['state'] == 'RUN':
+                            entry['state'] = 'FINISHED'
+                        if entry['state'] == 'ALLRUNNING':
                             entry['state'] = 'FINISHED'
                         break
                 self.current_job = None
@@ -284,6 +288,8 @@ class BenchmarkSQL:
         # recursively read info from result_dir for each run_id
         for run_id in range(start_run_id, end_run_id):
             result_dir = os.path.join(self.data_dir, "result_{0:06d}".format(run_id))
+            if not os.path.exists(result_dir):
+                continue
             metric_data = {}
             metric_data['run_id'] = run_id
             # read fault name from result_dir/data/faultInfo.csv
@@ -295,6 +301,9 @@ class BenchmarkSQL:
                     fault_name = row['name']
                     metric_data['fault_name'] = fault_name
                     break
+			# continue if fault_name is not found
+            if 'fault_name' not in metric_data:
+                continue
             # read metrics from result_dir/data/metrics.csv
             with open(os.path.join(result_dir, 'data', 'metrics.csv'), 'r') as fd:
                 # rto,rpo,recovery_time_factor,total_performance_factor,absorption_factor,recovery_factor
@@ -308,6 +317,8 @@ class BenchmarkSQL:
                     metric_data['absorption_factor'] = row['absorption_factor']
                     metric_data['recovery_factor'] = row['recovery_factor']
                     break
+            if 'rpo' not in metric_data:
+                continue
             metric_datas.append(metric_data)
         # sort metric_datas by fault_name
         metric_datas = sorted(metric_datas, key=lambda x: x['fault_name'])
@@ -436,6 +447,7 @@ class BenchmarkSQL:
                 entry['state'] = 'CANCELED'
                 break
         os.killpg(os.getpgid(self.current_job.proc.pid), signal.SIGKILL)
+        self.finished_reson = "CANCELED"
         self.save_status()
         self.lock.release()
 
@@ -539,13 +551,20 @@ class RunAllFaults(threading.Thread):
         self.proc = None
 
     def run(self):
+        self.bench.current_job_type = 'RUNALL'
+        self.bench.current_job_id = self.init_run_id 
+        self.bench.current_job_name = "result_{0:06d}".format(self.init_run_id)
+        self.bench.save_status()
+  
         fault_files = [f for f in os.listdir(self.bench.faults_dis) if os.path.isfile(os.path.join(self.bench.faults_dis, f))]
         for fault_file in fault_files:
+            if self.bench.finished_reson == "CANCELED":
+                break
             if self.run_each(fault_file) is True:
                 self.bench.status_data['run_count'] += 1
                 self.run_id += 1
             	# sleep 30 seconds
-                time.sleep(30)
+                time.sleep(120)
             # clear job output
             self.bench.current_job_output = ""
         self.end_run_id = self.run_id
@@ -573,6 +592,11 @@ class RunAllFaults(threading.Thread):
                 entry['start_run_id'] = self.start_run_id
                 entry['end_run_id'] = self.end_run_id
                 break
+        self.bench.current_job_type = 'IDLE'
+        self.bench.current_job_id = 0
+        self.bench.current_job_name = ""
+        self.bench.current_sub_job_name = ""
+        self.bench.current_job = None
         self.bench.save_status()
         self.bench.lock.release()
 
@@ -594,10 +618,10 @@ class RunAllFaults(threading.Thread):
                 'state':    'RUN',
             }] + self.bench.status_data['results']
         self.bench.save_status()
-        self.bench.current_job_type = 'RUNALL'
-        self.bench.current_job_id = self.run_id
-        self.bench.current_job_name = "result_{0:06d}".format(self.run_id)
-        self.bench.save_status()
+        # self.bench.current_job_type = 'RUNALL'
+        # self.bench.current_job_id = self.run_id
+        self.bench.current_sub_job_name = "result_{0:06d}".format(self.run_id)
+        # self.bench.save_status()
 
         origin_props = jproperties.Properties()
         with open(last_props, 'rb') as fd:
@@ -637,7 +661,7 @@ class RunAllFaults(threading.Thread):
             # remove current status_data and exit
             self.bench.lock.acquire()
             for entry in self.bench.status_data['results']:
-                if entry['name'] == self.bench.current_job_name:
+                if entry['name'] == self.bench.current_sub_job_name:
                     # remove entry from status_data['results']
                     self.bench.status_data['results'].remove(entry)
                     break
@@ -682,14 +706,14 @@ class RunAllFaults(threading.Thread):
             self.bench.add_job_output("\nBenchmarkSQL run complete\n")
         
         for entry in self.bench.status_data['results']:
-            if entry['name'] == self.bench.current_job_name:
+            if entry['name'] == self.bench.current_sub_job_name:
                 if entry['state'] == 'RUN':
                     entry['state'] = 'FINISHED'
                 break
-        self.bench.current_job = None
-        self.bench.current_job_id = 0
-        self.bench.current_job_type = 'IDLE'
-        self.bench.current_job_name = ""
+        # self.bench.current_job = None
+        # self.bench.current_job_id = 0
+        # self.bench.current_job_type = 'IDLE'
+        # self.bench.current_job_name = ""
         self.bench.save_status()
 
         if not os.path.exists(result_dir):
