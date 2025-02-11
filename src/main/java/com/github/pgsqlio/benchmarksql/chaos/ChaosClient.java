@@ -70,7 +70,18 @@ public class ChaosClient {
 				if (execChannel.isClosed()) {
 					if (in.available() > 0)
 						continue;
-					logger.info("Exit status: " + execChannel.getExitStatus());
+                    logger.info("Exit status: " + execChannel.getExitStatus());
+                    // log the output if the command failed
+                    if (execChannel.getExitStatus() != 0) {
+                        InputStream err = execChannel.getErrStream();
+                        byte[] errTmp = new byte[1024];
+                        while (err.available() > 0) {
+                            int i = err.read(errTmp, 0, 1024);
+                            if (i < 0)
+                                break;
+                            logger.error(new String(errTmp, 0, i));
+                        }
+                    }
 					break;
 				}
 				try {
@@ -84,7 +95,7 @@ public class ChaosClient {
 			new Thread(() -> {
 				try {
 					if (duration > 0) {
-						Thread.sleep(duration + 10000);
+						Thread.sleep(duration);
 					} else {
 						// wait for injection to take effect
 						Thread.sleep(10000);
@@ -107,6 +118,17 @@ public class ChaosClient {
 							if (deleteIn.available() > 0)
 								continue;
 							logger.info("Exit status: " + execChannel.getExitStatus());
+                            // log the output if the command failed
+                            if (execChannel.getExitStatus() != 0) {
+                                InputStream err = execChannel.getErrStream();
+                                byte[] errTmp = new byte[1024];
+                                while (err.available() > 0) {
+                                    int i = err.read(errTmp, 0, 1024);
+                                    if (i < 0)
+                                        break;
+                                    logger.error(new String(errTmp, 0, i));
+                                }
+                            }
 							break;
 						}
 						try {
