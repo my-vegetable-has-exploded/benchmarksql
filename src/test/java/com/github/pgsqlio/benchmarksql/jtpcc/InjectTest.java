@@ -31,6 +31,7 @@ public class InjectTest {
 		// sys.zone2.pods: "obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd"
 		// sys.zone3.pods: "obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2"
 		// sys.storage.pods: "obcluster-1-zone1-f4zc55,obcluster-1-zone1-vlqshr,obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd,obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2"
+        // sys.storage.volumePath: "/home/admin/data-file"
 		// sys.faults: "leader_fail.yaml"
 
 		Properties p = new Properties();
@@ -43,6 +44,7 @@ public class InjectTest {
 		p.setProperty("sys.zone2.pods", "obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd");
 		p.setProperty("sys.zone3.pods", "obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2");
 		p.setProperty("sys.storage.pods", "obcluster-1-zone1-f4zc55,obcluster-1-zone1-vlqshr,obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd,obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2");
+        p.setProperty("sys.storage.volumePath", "/home/admin/data-file");
 		p.setProperty("sys.test.pods", "obcluster-1-zone1-f4zc55");
 		p.setProperty("sys.faults", "leader_fail.yaml");
 
@@ -94,6 +96,7 @@ public class InjectTest {
 			Yaml yamlDumper = new Yaml(options);
 			yamlDumper.dump(describe, writer);
 			String yamlString = writer.toString();
+            input.close();
 
 			String expected = "apiVersion: chaos-mesh.org/v1alpha1"+
 			"\nkind: PodChaos"+
@@ -110,6 +113,36 @@ public class InjectTest {
 			"\n      - obcluster-1-zone1-f4zc55"+
 			"\n      - obcluster-1-zone1-vlqshr\n";
 			assertEquals(expected, yamlString);
+
+            fault = injecter.initialFault(config, "leader_zone_storage_all_io_fault_percent_20.yaml");
+            faultPath = fault.file;
+            // read yaml file
+            input = new FileInputStream(faultPath);
+            HashMap<String, Object> describe2 = yaml.load(input);
+            writer = new StringWriter();
+            yamlDumper.dump(describe2, writer);
+            yamlString = writer.toString();
+            input.close();
+
+            String expected2 = "apiVersion: chaos-mesh.org/v1alpha1"+
+            "\nkind: IOChaos"+
+            "\nmetadata:"+
+            "\n  name: io-fault"+
+            "\n  namespace: chaos-testing"+
+            "\nspec:"+
+            "\n  action: fault"+
+            "\n  mode: all"+
+            "\n  selector:"+
+            "\n    pods:"+
+            "\n      oceanbase:"+
+            "\n      - obcluster-1-zone1-f4zc55"+
+            "\n      - obcluster-1-zone1-vlqshr"+
+            "\n  volumePath: /home/admin/data-file"+
+            "\n  errno: 5"+
+            "\n  percent: 20"+
+            "\n  duration: 120s\n";
+
+            assertEquals(expected2, yamlString);
 
 		} catch (Exception e) {
 			e.printStackTrace();

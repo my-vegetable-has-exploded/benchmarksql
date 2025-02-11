@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -124,13 +125,19 @@ public class ChaosInjecter {
 	}
 
 	private static Object getReplacement(String value, HashMap<String, Object> replacements) {
+        // 构建一个忽略大小写的 replacements 映射
+        TreeMap<String, Object> caseInsensitiveReplacements = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        caseInsensitiveReplacements.putAll(replacements);
 		if (value.startsWith("$")) {
-			Object replacement1 = replacements.get(value);
+            if (value.equals("$storage.volumePath") || value.equals("$VOLUMEPATH")) {
+                System.err.println("value: " + value);
+            }
+			Object replacement1 = caseInsensitiveReplacements.get(value);
 			if (replacement1 != null) {
 				return replacement1;
 			}
 			// map $PODNAME to podname
-			Object replacement2 = replacements.get(value.substring(1).toLowerCase());
+			Object replacement2 = caseInsensitiveReplacements.get(value.substring(1));
 			if (replacement2 != null) {
 				return replacement2;
 			}

@@ -82,7 +82,6 @@ public class SystemConfig {
 			String key = (String) propertyNames.nextElement();
 			if (key.startsWith("sys.")) {
 				String value = getProp(p, key);
-				System.err.println(key.substring(4)+" "+value);
 				confs.put(key.substring(4), value);
 				logger.info("system config, {}={}", key.substring(4), value);
 			}

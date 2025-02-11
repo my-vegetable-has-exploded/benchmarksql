@@ -30,6 +30,10 @@ def generate_config_file(zone_type, role, pod_count, fault_type, duration, fault
         "injectpods": injectpods,
         "duration": f"{duration}s"
     }
+
+    # 将io故障路径设置为对应role的路径， 如storage角色设置为storage.volumnPath
+    if fault_type == "io_fault":
+        config["volumePath"] = "$" + role + ".volumePath"
     
     # 添加故障类型特定的参数
     for param, value in fault_params.items():
