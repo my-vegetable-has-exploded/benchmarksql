@@ -559,12 +559,13 @@ class RunAllFaults(threading.Thread):
         fault_files = [f for f in os.listdir(self.bench.faults_dis) if os.path.isfile(os.path.join(self.bench.faults_dis, f))]
         for fault_file in fault_files:
             if self.bench.finished_reson == "CANCELED":
-                break
+                self.bench.finished_reson = ""
+                return 
             if self.run_each(fault_file) is True:
                 self.bench.status_data['run_count'] += 1
                 self.run_id += 1
             	# sleep 30 seconds
-                time.sleep(120)
+                time.sleep(60)
             # clear job output
             self.bench.current_job_output = ""
         self.end_run_id = self.run_id
