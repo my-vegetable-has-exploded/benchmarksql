@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# run clear_fault.sh
+bash clear_fault.sh
+
 if [ $# -ne 1 ] ; then
     echo "usage: $(basename $0) PROPS_FILE" >&2
     exit 2
