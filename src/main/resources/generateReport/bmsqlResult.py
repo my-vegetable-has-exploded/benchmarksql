@@ -379,7 +379,7 @@ class bmsqlResult:
                 if int(row['error'])==1 or int(row['rollback'])==1:
                     continue
                 if row['txn_id'] not in persisted_txn_ids:
-                    print(f"txn_id {row['txn_id']} is not in txn file")
+                    # print(f"txn_id {row['txn_id']} is not in txn file")
                     loss_txn_intervals.append((int(row['start']), int(row['end'])))
 
         loss_txn_intervals.sort()
@@ -456,7 +456,7 @@ class bmsqlResult:
         startTS = (int(runinfo['startTS']))
         total_seconds = int(runinfo['rampupMins'])*60 + int(runinfo['runMins'])*60
         rampup_seconds = int(runinfo['rampupMins'])*60
-        first_fault_seconds = (int(self.faultinfo['start']) - startTS)//1000
+        first_fault_seconds = math.ceil((int(self.faultinfo['start']) - startTS)/1000)
         fault_seconds = []
 
         fault_file = self.faultfile 
@@ -491,8 +491,6 @@ class bmsqlResult:
         # ----
         # Use pymser to find the steady state
         # ----
-        txn_stat = savgol_filter(txn_stat, 10, 2)
-        sd = txn_stat[fault_start:period_end]
         steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=True, uncertainty='uSD', print_results=True)
 
         mse = steady_result['MSE']
@@ -501,7 +499,7 @@ class bmsqlResult:
         # print("mse: {}", mse)
 
         # find min mse
-        minn = 0
+        minn1 = 0
         k = 10
         # 找到第一个是比前后k个都小的点
         for i in range(0, len(mse)):
@@ -511,10 +509,49 @@ class bmsqlResult:
                     is_local_min = False
                     break
             if is_local_min:
-                minn = i
+                minn1 = i
                 break
-            
-        print("recovery end {}",minn)
+        
+        # allow 10% difference between local min mse and the recovery mse
+        for i in range(0, minn1):
+            if mse[i] < 1.1*mse[minn1]:
+                minn1 = i
+                break        
+
+        # ----
+        # Use pymser to find the steady state for filtered txn_stat
+        # ----
+        txn_stat = savgol_filter(txn_stat, 11, 3)
+        sd = txn_stat[fault_start:period_end]
+        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=True, uncertainty='uSD', print_results=True)
+
+        mse = steady_result['MSE']
+        # mse = mse[:math.floor(0.8*len(mse))]
+        # mse = savgol_filter(mse, 10, 1)
+        # print("mse: {}", mse)
+
+        # find min mse
+        minn2 = 0
+        k = 10
+        # 找到第一个是比前后k个都小的点
+        for i in range(0, len(mse)):
+            is_local_min = True
+            for j in range(max(0, i-k), min(len(mse), i+k+1)):
+                if mse[j] < mse[i]:
+                    is_local_min = False
+                    break
+            if is_local_min:
+                minn2 = i
+                break
+        
+        # allow 10% difference between local min mse and the recovery mse
+        for i in range(0, minn2):
+            if mse[i] < 1.1*mse[minn2]:
+                minn2 = i
+                break        
+        
+        minn = min(minn1, minn2)
+        print("recovery end {}",minn, "s", "recovery end under non-filtered txn_stat: ", minn1, "s", "recovery end under filtered txn_stat: ", minn2, "s")
 
         recovery_time = minn
         steady_metric['recovery_time_factor'] = minn

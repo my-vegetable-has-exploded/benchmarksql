@@ -10,6 +10,7 @@ from mpl_toolkits.axes_grid1 import Divider, Size
 from mpl_toolkits.axes_grid1.mpl_axes import Axes
 import json
 import duckdb
+from scipy.signal import savgol_filter
 
 from generateReport import *
 
@@ -64,6 +65,10 @@ class bmsqlPlot:
         for steady_metric in steady_metrics:
             fault_time = steady_metric['start_time']
             plt.axvspan(fault_time- warmupseconds, fault_time + max(steady_metric['recovery_time_factor'], 1)- warmupseconds, facecolor = 'r', alpha = 0.2)
+
+        # plot flitered data
+        flitered = savgol_filter(txn_stat, 11, 3)
+        plt.plot(x, flitered, 'g', label = 'flitered', linestyle='--')
 
         # ----
         # Plot the NOPM and add all the decorations
