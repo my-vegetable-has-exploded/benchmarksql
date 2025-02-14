@@ -236,6 +236,8 @@ public class jTPCC {
 	  dbType = jTPCCConfig.DB_OCEANBASE;
 	else if (iDBType.equals("tidb"))
 	  dbType = jTPCCConfig.DB_TiDB;
+    else if (iDBType.equals("polardb"))
+      dbType = jTPCCConfig.DB_POLARDB; 
     else {
       log.error("Unknown database type '{}'", iDBType);
       return;
