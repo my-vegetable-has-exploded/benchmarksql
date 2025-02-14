@@ -13,8 +13,8 @@ create table bmsql_warehouse (
   w_city      varchar(20),
   w_state     char(2),
   w_zip       char(9),
-  primary key (w_id)
-) dbpartition by hash(w_id);
+  constraint pk_warehouse primary key (w_id)
+) dbpartition by hash(w_id) ;
 
 create table bmsql_district (
   d_w_id       integer       not null,
@@ -28,8 +28,8 @@ create table bmsql_district (
   d_city       varchar(20),
   d_state      char(2),
   d_zip        char(9),
-  primary key (d_w_id, d_id)
-) dbpartition by hash(d_w_id);
+  constraint pk_district primary key (d_w_id, d_id)
+) dbpartition by hash(d_w_id) ;
 
 create table bmsql_customer (
   c_w_id         integer        not null,
@@ -53,7 +53,7 @@ create table bmsql_customer (
   c_since        timestamp,
   c_middle       char(2),
   c_data         varchar(500),
-  primary key (c_w_id, c_d_id, c_id),
+  constraint pk_customer primary key (c_w_id, c_d_id, c_id),
   key bmsql_customer_idx1 (c_w_id, c_d_id, c_last, c_first)
 );
 
@@ -75,8 +75,8 @@ create table bmsql_new_order (
   no_w_id  integer   not null,
   no_d_id  integer   not null,
   no_o_id  integer   not null,
-  primary key (no_w_id, no_d_id, no_o_id)
-) dbpartition by hash(no_w_id);
+ constraint pk_new_order primary key (no_w_id, no_d_id, no_o_id)
+) dbpartition by hash(no_w_id) ;
 
 create table bmsql_oorder (
   o_w_id       integer      not null,
@@ -87,8 +87,8 @@ create table bmsql_oorder (
   o_ol_cnt     integer,
   o_all_local  integer,
   o_entry_d    timestamp,
-   primary key (o_w_id, o_d_id, o_id),
-   unique key (o_w_id, o_d_id, o_carrier_id, o_id)
+  constraint pk_oorder primary key (o_w_id, o_d_id, o_id),
+  constraint bmsql_oorder_idx1 unique key (o_w_id, o_d_id, o_carrier_id, o_id)
 ) dbpartition by hash(o_w_id) ;
 
 create table bmsql_order_line (
@@ -102,8 +102,8 @@ create table bmsql_order_line (
   ol_supply_w_id  integer,
   ol_quantity     integer,
   ol_dist_info    char(24),
-  primary key (ol_w_id, ol_d_id, ol_o_id, ol_number)
-) dbpartition by hash(ol_w_id);
+  constraint pk_order_line primary key (ol_w_id, ol_d_id, ol_o_id, ol_number)
+) dbpartition by hash(ol_w_id) ;
 
 create table bmsql_item (
   i_id     integer      not null,
@@ -132,8 +132,8 @@ create table bmsql_stock (
   s_dist_08    char(24),
   s_dist_09    char(24),
   s_dist_10    char(24),
-  primary key (s_w_id, s_i_id)
-) dbpartition by hash(s_w_id);
+  constraint pk_stock primary key (s_w_id, s_i_id)
+) dbpartition by hash(s_w_id) ;
 
 CREATE TABLE bmsql_txnlog (
   txn_id  BIGINT  not null
@@ -142,4 +142,4 @@ CREATE TABLE bmsql_txnlog (
 -- CREATE TABLE bmsql_txnlog (
 --   txn_id  BIGINT  not null
 --   thread_id BIGINT not null
--- ) partition by hash(thread_id) partitions 1024;
+-- ) dbpartition by hash(thread_id) ;
