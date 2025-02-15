@@ -55,6 +55,9 @@ class bmsqlPlot:
         txn_stat = [0 for i in range(total_seconds)]
         x = range(-int(runinfo['rampupMins'])*60, int(runinfo['runMins'])*60, 1)
         for row in result.txn_trace:
+            # if this transaction is not successful, ignore it
+            if row['error'] == '1' or row['rollback'] == '1':
+                continue
             end = (int(row['end']) - startTS)//1000 
             if end >=0 and end < total_seconds:
                 txn_stat[end]+=1
@@ -123,6 +126,9 @@ class bmsqlPlot:
         x = range(-int(runinfo['rampupMins'])*60//interval, int(runinfo['runMins'])*60//interval, 1)
         for row in result.txn_trace:
             end = (int(row['end']) - startTS)//(1000*interval)
+            # if this transaction is not successful, ignore it
+            if row['error'] == '1' or row['rollback'] == '1':
+                continue
             if end >=0 and end < total_intervals:
                 txn_stat[end]+=1
 

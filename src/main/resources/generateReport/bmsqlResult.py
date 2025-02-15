@@ -592,6 +592,9 @@ class bmsqlResult:
         startTS = (int(runinfo['startTS']))
         txn_stat = [0 for i in range(total_seconds)]
         for row in self.txn_trace:
+            # if this transaction is not successful, ignore it
+            if row['error'] == '1' or row['rollback'] == '1':
+                continue
             end = (int(row['end']) - startTS)//1000
             if end >=0 and end < total_seconds:
                 txn_stat[end]+=1
