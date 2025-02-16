@@ -1,75 +1,438 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Result Details</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        /* 自定义表格样式 */
-        .table-custom {
-            border-collapse: separate;
-            border-spacing: 0;
-            border: 2px solid #007bff; /* 表格外边框颜色 */
-            border-radius: 10px; /* 表格圆角 */
-            overflow: hidden; /* 确保边框圆角生效 */
-        }
-        .table-custom th,
-        .table-custom td {
-            border: 1px solid #dee2e6; /* 单元格边框颜色 */
-            padding: 12px; /* 单元格内边距 */
-            text-align: center; /* 单元格内容居中 */
-        }
-        .table-custom thead th {
-            background-color: #007bff; /* 表头背景颜色 */
-            color: white; /* 表头文字颜色 */
-            border-bottom: 2px solid #0056b3; /* 表头底部边框 */
-        }
-        .table-custom tbody tr:hover {
-            background-color: #f8f9fa; /* 行悬停效果 */
-        }
-        .btn-sm {
-            margin: 2px; /* 按钮间距 */
-        }
-    </style>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Result Details</title>
+	<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+	<style>
+		/* 自定义表格样式 */
+		.table-custom {
+			border-collapse: separate;
+			border-spacing: 0;
+			border: 2px solid #007bff;
+			border-radius: 10px;
+			overflow: hidden;
+		}
+
+		.table-custom th,
+		.table-custom td {
+			border: 1px solid #dee2e6;
+			padding: 12px;
+			text-align: center;
+		}
+
+		.table-custom thead th {
+			background-color: #007bff;
+			color: white;
+			border-bottom: 2px solid #0056b3;
+		}
+
+		.table-custom tbody tr:hover {
+			background-color: #f8f9fa;
+		}
+
+		.btn-sm {
+			margin: 2px;
+		}
+
+		.summary-card {
+			background-color: #f8f9fa;
+			border-radius: 10px;
+			padding: 20px;
+			margin-bottom: 20px;
+		}
+
+		.summary-card h3 {
+			margin-bottom: 20px;
+			text-align: center;
+		}
+
+		.summary-card table {
+			width: 100%;
+			margin: 0 auto;
+			text-align: center;
+		}
+
+		.summary-card table th,
+		.summary-card table td {
+			text-align: center;
+			vertical-align: middle;
+		}
+
+		.table-custom {
+			border-collapse: separate;
+			border-spacing: 0;
+			border: 2px solid #007bff;
+			border-radius: 10px;
+			overflow: hidden;
+		}
+
+		.table-custom th,
+		.table-custom td {
+			border: 1px solid #dee2e6;
+			padding: 12px;
+		}
+
+		.table-custom thead th {
+			background-color: #007bff;
+			color: white;
+			border-bottom: 2px solid #0056b3;
+		}
+
+		.table-custom tbody tr:hover {
+			background-color: #f8f9fa;
+		}
+
+		.weight-input {
+			width: 60px;
+		}
+
+		/* 总分样式 */
+		.total-score-card {
+			background-color: #007bff;
+			color: white;
+			border-radius: 10px;
+			padding: 20px;
+			margin-bottom: 20px;
+			text-align: center;
+		}
+
+		.total-score-card h2 {
+			font-size: 2.5rem;
+			margin-bottom: 10px;
+		}
+
+		.total-score-card p {
+			font-size: 1.2rem;
+			margin-bottom: 0;
+		}
+
+		/* 调整权重输入框的间距 */
+		.form-group {
+			display: flex;
+			align-items: center;
+			margin-right: 15px;
+			/* 输入框之间的间距 */
+		}
+
+		/* 调整标签和输入框的对齐 */
+		.form-group label {
+			margin-bottom: 0;
+			/* 去除默认的标签下边距 */
+			margin-right: 5px;
+			/* 标签和输入框之间的间距 */
+		}
+
+		.weight-input {
+			/* 统一输入框样式 */
+			min-width: 70px;
+			text-align: center;
+		}
+
+		.form-inline label {
+			/* 标签文字对齐优化 */
+			white-space: nowrap;
+		}
+	</style>
 </head>
+
 <body>
-    <div class="container">
-        <h1 class="my-4 text-center">Result Details for Run ID: {{ metric_datas[0].run_id }}</h1>
-        <table class="table table-custom">
-            <thead class="thead-dark">
-                <tr>
-                    <th>Fault Name</th>
-                    <th>Run ID</th>
-                    <th>RPO</th>
-                    <th>RTO</th>
-                    <th>Recovery Time Factor</th>
-                    <th>Total Performance Factor</th>
-                    <th>Absorption Factor</th>
-                    <th>Recovery Factor</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for metric in metric_datas %}
-                <tr>
-                    <td>{{ metric.fault_name }}</td>
-                    <td>{{ metric.run_id }}</td>
-                    <td>{{ metric.rpo }}</td>
-                    <td>{{ metric.rto }}</td>
-                    <td>{{ metric.recovery_time_factor }}</td>
-                    <td>{{ metric.total_performance_factor }}</td>
-                    <td>{{ metric.absorption_factor }}</td>
-                    <td>{{ metric.recovery_factor }}</td>
-                    <td>
-                        <a href="{{ url_for('result_fault') }}?run_id={{ metric.run_id }}" class="btn btn-info btn-sm" target="_blank">Show Fault</a>
-                        <a href="{{ url_for('result_log') }}?run_id={{ metric.run_id }}" class="btn btn-warning btn-sm" target="_blank">Show Log</a>
-                        <a href="{{ url_for('result_show') }}?run_id={{ metric.run_id }}" class="btn btn-success btn-sm" target="_blank">Show Report</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+	<div class="container">
+		<!-- 总分显示 -->
+		<div class="total-score-card">
+			<h2>Total Score</h2>
+			<p id="total-score">0</p>
+		</div>
+
+		<h1 class="my-4 text-center">Result Details for Run ID: {{ metric_datas[0].run_id }}</h1>
+
+		<!-- 修改 summary-card 部分 -->
+		<div class="summary-card">
+			<h3>Summary by Fault Type</h3>
+			<table class="table table-bordered table-custom" id="fault-summary-table">
+				<thead>
+					<tr>
+						<th class="text-center">Fault Type</th>
+						<th class="text-center">Average RPO</th>
+						<th class="text-center">Average RTO</th>
+						<th class="text-center">Average Recovery Time Factor</th>
+						<th class="text-center">Average Total Performance Factor</th>
+						<th class="text-center">Average Absorption Factor</th>
+						<th class="text-center">Average Recovery Factor</th>
+						<th class="text-center">Average Stability</th>
+					</tr>
+				</thead>
+				<tbody>
+					<!-- 汇总数据将通过 JavaScript 动态填充 -->
+				</tbody>
+			</table>
+		</div>
+
+		<!-- 权重输入部分 -->
+		<div class="mb-4">
+			<h3>Weights</h3>
+			<div class="d-flex align-items-center">
+				<!-- RPO Weight -->
+				<div class="form-group form-inline mr-4">
+					<label for="rpo_weight" class="mr-2">RPO Weight</label>
+					<input type="number" class="form-control weight-input" id="rpo_weight" value="1"
+						style="width: 70px;">
+				</div>
+
+				<!-- RTO Weight -->
+				<div class="form-group form-inline mr-4">
+					<label for="rto_weight" class="mr-2">RTO Weight</label>
+					<input type="number" class="form-control weight-input" id="rto_weight" value="1"
+						style="width: 70px;">
+				</div>
+
+				<!-- Stability Weight -->
+				<div class="form-group form-inline">
+					<label for="stability_weight" class="mr-2">Stability Weight</label>
+					<input type="number" class="form-control weight-input" id="stability_weight" value="1"
+						style="width: 70px;">
+				</div>
+			</div>
+		</div> <!-- 权重输入部分 -->
+
+		<!-- 用例表格 -->
+		<table class="table table-custom">
+			<thead class="thead-dark">
+				<tr>
+					<th>Fault Name</th>
+					<th>Run ID</th>
+					<th>RPO</th>
+					<th>RTO</th>
+					<th>Recovery Time Factor</th>
+					<th>Total Performance Factor</th>
+					<th>Absorption Factor</th>
+					<th>Recovery Factor</th>
+					<th>Stability Score</th>
+					<th>Comprehensive Score</th>
+					<th>Case Weight</th>
+					<th>Actions</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for metric in metric_datas %}
+				<tr data-metric='{{ metric | tojson }}'>
+					<td>{{ metric.fault_name }}</td>
+					<td>{{ metric.run_id }}</td>
+					<td class="rpo">{{ metric.rpo }}</td>
+					<td class="rto">{{ metric.rto }}</td>
+					<td class="recovery-time">{{ metric.recovery_time_factor }}</td>
+					<td class="performance">{{ metric.total_performance_factor }}</td>
+					<td class="absorption">{{ metric.absorption_factor }}</td>
+					<td class="recovery">{{ metric.recovery_factor }}</td>
+					<td class="stability-score"></td>
+					<td class="comprehensive-score"></td>
+					<td>
+						<input type="number" class="form-control weight-input case-weight" value="1">
+					</td>
+					<td>
+						<a href="{{ url_for('result_fault') }}?run_id={{ metric.run_id }}" class="btn btn-info btn-sm"
+							target="_blank">Show Fault</a>
+						<a href="{{ url_for('result_log') }}?run_id={{ metric.run_id }}" class="btn btn-warning btn-sm"
+							target="_blank">Show Log</a>
+						<a href="{{ url_for('result_show') }}?run_id={{ metric.run_id }}" class="btn btn-success btn-sm"
+							target="_blank">Show Report</a>
+					</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+
+	<script>
+		// 评分计算逻辑
+		function calculateRpoScore(rpo) {
+			const seconds = rpo / 1000;
+			if (seconds <= 30) return 100;
+			if (seconds <= 60) return 90;
+			if (seconds <= 600) return 80;
+			if (seconds <= 1200) return 70;
+			if (seconds <= 1800) return 60;
+			if (seconds <= 2400) return 50;
+			if (seconds <= 3000) return 40;
+			if (seconds <= 3600) return 30;
+			if (seconds <= 5400) return 20;
+			if (seconds <= 7200) return 10;
+			return 0;
+		}
+
+		function calculateRtoScore(rto) {
+			const seconds = rto / 1000;
+			if (seconds <= 10) return 100;
+			if (seconds <= 20) return 90;
+			if (seconds <= 30) return 80;
+			if (seconds <= 60) return 70;
+			if (seconds <= 300) return 60;
+			if (seconds <= 600) return 50;
+			if (seconds <= 1800) return 40;
+			if (seconds <= 3600) return 30;
+			if (seconds <= 5400) return 20;
+			if (seconds <= 6000) return 10;
+			return 0;
+		}
+
+		function calculateStabilityScore(metric) {
+			const observer_time = metric.observer_time || 120; // 默认观察时间为120秒
+			let total_performance_factor = parseFloat(metric.total_performance_factor);
+			let absorption_factor = parseFloat(metric.absorption_factor);
+			let recovery_factor = parseFloat(metric.recovery_factor);
+			let recovery_time_factor = parseFloat(metric.recovery_time_factor);
+
+			if (total_performance_factor === -1) total_performance_factor = 1;
+			if (absorption_factor === -1) absorption_factor = 1;
+
+			total_performance_factor = Math.min(total_performance_factor, 1);
+			recovery_factor = Math.min(recovery_factor, 1);
+
+			const stability = total_performance_factor * recovery_factor *
+				(absorption_factor + 1 - Math.pow(recovery_time_factor / observer_time, Math.max(recovery_factor - absorption_factor, 0)));
+			return Math.round(stability * 50);
+		}
+
+		function calculateComprehensiveScore(metric, rpoWeight, rtoWeight, stabilityWeight) {
+			const rpoScore = calculateRpoScore(metric.rpo);
+			const rtoScore = calculateRtoScore(metric.rto);
+			const stabilityScore = calculateStabilityScore(metric);
+
+			return (rpoScore * rpoWeight + rtoScore * rtoWeight + stabilityScore * stabilityWeight) /
+				(rpoWeight + rtoWeight + stabilityWeight);
+		}
+
+		// 更新总分
+		function updateTotalScore() {
+			const rpoWeight = parseFloat(document.getElementById('rpo_weight').value);
+			const rtoWeight = parseFloat(document.getElementById('rto_weight').value);
+			const stabilityWeight = parseFloat(document.getElementById('stability_weight').value);
+
+			let totalScore = 0;
+			let totalWeight = 0;
+
+			document.querySelectorAll('tbody tr').forEach(row => {
+				const caseWeight = parseFloat(row.querySelector('.case-weight').value);
+				const metric = JSON.parse(row.dataset.metric);
+				const comprehensiveScore = calculateComprehensiveScore(metric, rpoWeight, rtoWeight, stabilityWeight);
+				totalScore += comprehensiveScore * caseWeight;
+				totalWeight += caseWeight;
+			});
+
+			document.getElementById('total-score').textContent = (totalScore / totalWeight).toFixed(2);
+		}
+
+		// 更新所有分数
+		function updateAllScores() {
+			const rpoWeight = parseFloat(document.getElementById('rpo_weight').value);
+			const rtoWeight = parseFloat(document.getElementById('rto_weight').value);
+			const stabilityWeight = parseFloat(document.getElementById('stability_weight').value);
+
+			document.querySelectorAll('tbody tr').forEach(row => {
+				const metric = JSON.parse(row.dataset.metric);
+				const stabilityScore = calculateStabilityScore(metric);
+				const comprehensiveScore = calculateComprehensiveScore(metric, rpoWeight, rtoWeight, stabilityWeight);
+
+				row.querySelector('.stability-score').textContent = stabilityScore.toFixed(2);
+				row.querySelector('.comprehensive-score').textContent = comprehensiveScore.toFixed(2);
+			});
+
+			updateTotalScore();
+		}
+
+		// 初始化
+		updateAllScores();
+
+		// 遍历每一行计算分数
+		document.querySelectorAll('tbody tr').forEach(row => {
+			const metric = JSON.parse(row.dataset.metric);
+
+			// 计算稳定性分数
+			const stabilityScore = calculateStabilityScore(metric);
+			row.querySelector('.stability-score').textContent = stabilityScore.toFixed(2);
+
+			// 计算综合分数（需要权重参数）
+			const comprehensiveScore = calculateComprehensiveScore(
+				metric,
+				parseFloat(document.getElementById('rpo_weight').value),
+				parseFloat(document.getElementById('rto_weight').value),
+				parseFloat(document.getElementById('stability_weight').value)
+			);
+			row.querySelector('.comprehensive-score').textContent = comprehensiveScore.toFixed(2);
+		});
+
+		// 更新故障类型汇总表格
+		function updateFaultSummary() {
+			const faultData = {};
+
+			// 遍历所有用例行
+			document.querySelectorAll('tbody tr').forEach(row => {
+				const metric = JSON.parse(row.dataset.metric);
+				const weight = parseFloat(row.querySelector('.case-weight').value) || 0;
+				const faultType = metric.fault_type;
+
+				if (!faultData[faultType]) {
+					faultData[faultType] = {
+						totalWeight: 0,
+						rpo: 0,
+						rto: 0,
+						recoveryTimeFactor: 0,
+						totalPerformanceFactor: 0,
+						absorptionFactor: 0,
+						recoveryFactor: 0,
+						stability: 0
+					};
+				}
+
+				// 累加加权值
+				const data = faultData[faultType];
+				data.totalWeight += weight;
+				data.rpo += metric.rpo * weight;
+				data.rto += metric.rto * weight;
+				data.recoveryTimeFactor += metric.recovery_time_factor * weight;
+				data.totalPerformanceFactor += metric.total_performance_factor * weight;
+				data.absorptionFactor += metric.absorption_factor * weight;
+				data.recoveryFactor += metric.recovery_factor * weight;
+				data.stability += calculateStabilityScore(metric) * weight;
+			});
+
+			// 更新汇总表格
+			const tbody = document.querySelector('#fault-summary-table tbody');
+			tbody.innerHTML = '';
+
+			for (const [type, data] of Object.entries(faultData)) {
+				const row = document.createElement('tr');
+
+				// 计算加权平均值
+				const calcAvg = (value) => data.totalWeight ? (value / data.totalWeight).toFixed(2) : '0.00';
+
+				row.innerHTML = `
+            <td class="text-center">${type}</td>
+            <td class="text-center">${calcAvg(data.rpo)}</td>
+            <td class="text-center">${calcAvg(data.rto)}</td>
+            <td class="text-center">${calcAvg(data.recoveryTimeFactor)}</td>
+            <td class="text-center">${calcAvg(data.totalPerformanceFactor)}</td>
+            <td class="text-center">${calcAvg(data.absorptionFactor)}</td>
+            <td class="text-center">${calcAvg(data.recoveryFactor)}</td>
+            <td class="text-center">${calcAvg(data.stability)}</td>
+        `;
+				tbody.appendChild(row);
+			}
+		}
+
+		// 在权重变化时同时更新汇总和总分
+		document.querySelectorAll('.weight-input').forEach(input => {
+			input.addEventListener('input', () => {
+				updateAllScores();
+				updateFaultSummary();
+			});
+		});
+
+		// 初始化时调用
+		updateFaultSummary();
+	</script>
 </body>
+
 </html>

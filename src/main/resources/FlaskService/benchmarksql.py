@@ -304,6 +304,21 @@ class BenchmarkSQL:
 			# continue if fault_name is not found
             if 'fault_name' not in metric_data:
                 continue
+            # set fault_type according to fault_name
+            # if fault_name contains 'io_fault', then fault_type is 'io_fault'
+            # if fault_name contains 'net_delay', then fault_type is 'net_delay'
+            # if fault_name contains 'net_loss', then fault_type is 'net_loss'
+            # if fault_name contains 'fail', then fault_type is 'fail'
+            if 'io_fault' in fault_name:
+                metric_data['fault_type'] = 'io_fault'
+            elif 'net_delay' in fault_name:
+                metric_data['fault_type'] = 'net_delay'
+            elif 'net_loss' in fault_name:
+                metric_data['fault_type'] = 'net_loss'
+            elif 'fail' in fault_name:
+                metric_data['fault_type'] = 'fail'
+            else:
+                metric_data['fault_type'] = 'unknown'
             # read metrics from result_dir/data/metrics.csv
             with open(os.path.join(result_dir, 'data', 'metrics.csv'), 'r') as fd:
                 # rto,rpo,recovery_time_factor,total_performance_factor,absorption_factor,recovery_factor
@@ -316,6 +331,8 @@ class BenchmarkSQL:
                     metric_data['total_performance_factor'] = row['total_performance_factor']
                     metric_data['absorption_factor'] = row['absorption_factor']
                     metric_data['recovery_factor'] = row['recovery_factor']
+					# TODO record observer time
+                    metric_data['observer_time'] = 120
                     break
             if 'rpo' not in metric_data:
                 continue
