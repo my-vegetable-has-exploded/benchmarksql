@@ -3,9 +3,9 @@ import yaml
 # 定义故障类型及其参数
 FAULT_TYPES = {
     "fail": {"template": "fail.yaml", "params": {}},
-    "io_fault": {"template": "io_fault.yaml", "params": {"percent": [100, 80, 50, 20]}},
-    "net_delay": {"template": "net_delay.yaml", "params": {"latency": ["1ms", "4ms", "16ms"]}},
-    "net_loss": {"template": "net_loss.yaml", "params": {"loss": ["100", "80", "50", "20"]}},
+    "io_fault": {"template": "io_fault.yaml", "params": {"percent": [100, 80, 50, 20, 10]}},
+    "net_delay": {"template": "net_delay.yaml", "params": {"latency": ["1ms", "4ms", "8ms", "16ms", "32ms"]}},
+    "net_loss": {"template": "net_loss.yaml", "params": {"loss": ["5", "10", "15", "20"]}},
 }
 
 # 定义故障位置生成函数
@@ -20,6 +20,51 @@ def generate_injectpods(zone_type, role, pod_count):
         return f"${role}-{pod_count}"  # 不指定zone
     else:
         raise ValueError(f"Invalid zone_type: {zone_type}")
+
+# 过滤异常情况
+def is_abnormal(zone_type, role, pod_count, fault_type, fault_params):
+    # 过滤掉对compute角色设置zone的情况
+    if role == "compute" and zone_type:
+        return True
+
+    # 过滤掉对所有compute节点注入高网络延迟的情况
+    if role == "compute" and pod_count == 0 and zone_type == "":  # 只对storage角色的所有节点进行过滤
+        if fault_type == "io_fault":
+            percent_threshold = 50
+            if fault_params.get("percent", 20) >= percent_threshold:
+                return True
+        if fault_type == "net_delay":
+            # 提取数字部分进行比较
+            current_latency = int(''.join(filter(str.isdigit, fault_params.get("latency", "1ms"))))
+            threshold_latency = 16
+            if current_latency > threshold_latency:
+                return True
+        if fault_type == "net_loss":
+            loss_threshold = 10  # 网络丢包率阈值（单位：%）
+            if int(fault_params.get("loss", 0)) >= loss_threshold:
+                return True
+
+    
+    # 过滤掉对所有storage节点注入高比例IO故障或高网络延迟的情况
+    if role == "storage" and pod_count == 0 and zone_type == "":  # 只对storage角色的所有节点进行过滤
+        if fault_type == "io_fault":
+            percent_threshold = 50
+            if fault_params.get("percent", 20) >= percent_threshold:
+                return True
+        if fault_type == "net_delay":
+            # 提取数字部分进行比较
+            current_latency = int(''.join(filter(str.isdigit, fault_params.get("latency", "1ms"))))
+            threshold_latency = 16
+            if current_latency > threshold_latency:
+                return True
+        if fault_type == "net_loss":
+            loss_threshold = 10  # 网络丢包率阈值（单位：%）
+            if int(fault_params.get("loss", 0)) >= loss_threshold:
+                return True
+    # 过滤掉让所有存储和计算节点失效的情况
+    if pod_count == 0 and fault_type == "fail" and zone_type == "": # 只对所有节点进行过滤
+        return True
+    return False
 
 # 生成配置文件
 def generate_config_file(zone_type, role, pod_count, fault_type, duration, fault_params):
@@ -46,9 +91,19 @@ def generate_config_file(zone_type, role, pod_count, fault_type, duration, fault
         file_name_parts.append("zone")
     file_name_parts.extend([role, "all" if pod_count == 0 else "one", fault_type])
     
-    # 将故障参数添加到文件名中
+    # 将故障参数添加到文件名中，并统一参数位数
     for param, value in fault_params.items():
-        file_name_parts.append(f"{param}_{value}")
+        if param == "percent":
+            formatted_value = f"{int(value):03d}"  # 百分比统一为3位数，例如 100 -> 100, 80 -> 080
+        elif param == "latency":
+            # 提取数字部分并统一为3位数，例如 1ms -> 001ms, 16ms -> 016ms
+            num_value = ''.join(filter(str.isdigit, value))
+            formatted_value = f"{int(num_value):03d}ms"
+        elif param == "loss":
+            formatted_value = f"{int(value):03d}"  # 丢包率统一为3位数，例如 5 -> 005, 20 -> 020
+        else:
+            formatted_value = str(value)  # 其他参数保持不变
+        file_name_parts.append(f"{param}_{formatted_value}")
     
     file_name = "_".join(file_name_parts) + ".yaml"
     
@@ -74,9 +129,11 @@ if __name__ == "__main__":
                 for fault_type in fault_types:
                     fault_config = FAULT_TYPES[fault_type]
                     if not fault_config["params"]:  # 如果没有参数（如fail类型）
-                        generate_config_file(zone_type, role, pod_count, fault_type, duration, {})
+                        if not is_abnormal(zone_type, role, pod_count, fault_type, {}):
+                            generate_config_file(zone_type, role, pod_count, fault_type, duration, {})
                     else:
                         # 为每个参数值生成一个配置文件
                         for param, values in fault_config["params"].items():
                             for value in values:
-                                generate_config_file(zone_type, role, pod_count, fault_type, duration, {param: value})
+                                if not is_abnormal(zone_type, role, pod_count, fault_type, {param: value}):
+                                    generate_config_file(zone_type, role, pod_count, fault_type, duration, {param: value})
