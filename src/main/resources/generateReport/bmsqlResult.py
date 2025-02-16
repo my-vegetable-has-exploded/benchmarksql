@@ -488,6 +488,8 @@ class bmsqlResult:
             'end_time': period_end,
         }
 
+        original_txn_stat = txn_stat
+
         # ----
         # Use pymser to find the steady state
         # ----
@@ -556,21 +558,21 @@ class bmsqlResult:
         recovery_time = minn
         steady_metric['recovery_time_factor'] = minn
 
-        if recovery_time != 0:
-            total_performance = sum(txn_stat[fault_start:fault_start+recovery_time])/ recovery_time
-            total_performance_factor = total_performance / performance_desired
-            steady_metric['total_performance_factor'] = total_performance_factor
-            absorption_factor = min(txn_stat[fault_start:fault_start+recovery_time]) / performance_desired
-            steady_metric['absorption_factor'] = absorption_factor
-        else:
-            steady_metric['total_performance_factor'] = -1
-            steady_metric['absorption_factor'] = -1
-        
         # avaerage performance in later 1min or all time if recovery time is less than 1min
-        performance_recovery = sum(txn_stat[fault_start+recovery_time: min(fault_start+recovery_time+60, period_end)])/ min(60, period_end - fault_start - recovery_time)
+        performance_recovery = sum(original_txn_stat[fault_start+recovery_time: min(fault_start+recovery_time+60, period_end)])/ min(60, period_end - fault_start - recovery_time)
         recovery_factor = performance_recovery / performance_desired
-        steady_metric['recovery_factor'] = recovery_factor
+        steady_metric['recovery_factor'] = min(recovery_factor, 1.0)
 
+        if recovery_time != 0:
+            total_performance = sum(original_txn_stat[fault_start:fault_start+recovery_time])/ recovery_time
+            total_performance_factor = total_performance / performance_desired
+            steady_metric['total_performance_factor'] = min(total_performance_factor, 1)
+            absorption_factor = min(original_txn_stat[fault_start:fault_start+recovery_time]) / performance_desired
+            steady_metric['absorption_factor'] = min(absorption_factor, 1)
+        else:
+            steady_metric['total_performance_factor'] = recovery_factor
+            steady_metric['absorption_factor'] = recovery_factor
+        
         print(f"Steady state metrics: {steady_metric}")
         return steady_metric
 
