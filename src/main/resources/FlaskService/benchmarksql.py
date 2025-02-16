@@ -146,7 +146,7 @@ class BenchmarkSQL:
                         if entry['state'] == 'RUN':
                             entry['state'] = 'FINISHED'
                         if entry['state'] == 'ALLRUNNING':
-                            entry['state'] = 'FINISHED'
+                            entry['state'] = 'ALLFINISHED'
                         break
                 self.current_job = None
                 self.current_job_id = 0
@@ -397,6 +397,8 @@ class BenchmarkSQL:
                 'name':     "result_{0:06d}".format(run_id),
                 'start':    time.asctime(),
                 'state':    'ALLRUNNING',
+				'start_run_id': run_id+1,
+				'end_run_id': 0,
             }] + self.status_data['results']
         self.save_status()
 
@@ -589,6 +591,11 @@ class RunAllFaults(threading.Thread):
         self.bench.lock.acquire()
         for entry in self.bench.status_data['results']:
             if entry['run_id'] == self.init_run_id:
+                entry['state'] = 'ALLFINISHED'
+                entry['start_run_id'] = self.start_run_id
+                entry['end_run_id'] = self.end_run_id
+                break
+            if entry['name'] == self.bench.current_job_name:
                 entry['state'] = 'ALLFINISHED'
                 entry['start_run_id'] = self.start_run_id
                 entry['end_run_id'] = self.end_run_id
