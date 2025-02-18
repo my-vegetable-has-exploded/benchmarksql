@@ -16,6 +16,7 @@ import csv
 import shlex
 import jproperties
 import queue
+import yaml
 
 class BenchmarkSQL:
     """
@@ -25,6 +26,14 @@ class BenchmarkSQL:
         """
         Initialize the instance
         """
+
+        self.FAULT_TYPES = {
+            "fail": {"params": []},
+            "io_fault": {"params": ["percent"]},
+            "net_delay": {"params": ["latency"]},
+            "net_loss": {"params": ["loss"]}
+        }
+        
         # ----
         # Set the path where we find the BenchmarkSQL run components.
         # We also make this our current directory for launching the
@@ -224,6 +233,104 @@ class BenchmarkSQL:
         self.lock.release()
         return results
 
+    def get_cases(self):
+        # Get the list of fault templates, each fault contain a name and type
+        cases = []
+        fault_files = [f for f in os.listdir(self.faults_dis) if os.path.isfile(os.path.join(self.faults_dis, f))]
+        for fault_file in fault_files:
+            if 'io_fault' in fault_file:
+                fault_type = 'io_fault'
+            elif 'net_delay' in fault_file:
+                fault_type = 'net_delay'
+            elif 'net_loss' in fault_file:
+                fault_type = 'net_loss'
+            elif 'fail' in fault_file:
+                fault_type = 'fail'
+            else:
+                fault_type = 'unknown'
+            cases.append({'name': fault_file, 'type': fault_type})
+        cases = sorted(cases, key=lambda x: x['name'])
+        return cases
+        
+    def delete_case(self, case_name):
+        # Delete the fault template file
+        case_path = os.path.join(self.faults_dis, case_name)
+        if os.path.exists(case_path):
+            os.remove(case_path)
+        return
+
+    def show_case(self, case_name):
+        # Show the content of the fault template file
+        case_path = os.path.join(self.faults_dis, case_name)
+        if os.path.exists(case_path):
+            with open(case_path, 'r') as fd:
+                return fd.read()
+        return "Not found"
+    
+    
+    # 定义故障位置生成函数
+    def generate_injectpods(zone_type, role, pod_count):
+        if zone_type == "leader":
+            return f"$zone.leader-{role}-{pod_count}"
+        elif zone_type == "follower":
+            return f"$zone.follower.1-{role}-{pod_count}"
+        elif zone_type == "random":
+            return f"$zone.random-{role}-{pod_count}"
+        elif zone_type == "":
+            return f"${role}-{pod_count}"  # 不指定zone
+        else:
+            raise ValueError(f"Invalid zone_type: {zone_type}")
+
+    def generate_case_file(self, zone_type, role, pod_count, fault_type, duration, fault_params, other_params):
+        injectpods = self.generate_injectpods(zone_type, role, pod_count)
+        fault_config = self.FAULT_TYPES[fault_type]
+        config = {
+            "template": fault_config["template"],
+            "injectpods": injectpods,
+            "duration": f"{duration}s"
+        }
+
+        # 将io故障路径设置为对应role的路径， 如storage角色设置为storage.volumnPath
+        if fault_type == "io_fault":
+            config["volumePath"] = "$" + role + ".volumePath"
+        
+        # 添加故障类型特定的参数
+        for param, value in fault_params.items():
+            config[param] = value
+        
+        for param, value in other_params.items():
+            config[param] = value
+        
+        # 生成文件名
+        file_name_parts = []
+        if zone_type:  # 如果指定了zone，才将zone描述加入文件名
+            file_name_parts.append(zone_type)
+            file_name_parts.append("zone")
+        file_name_parts.extend([role, "all" if pod_count == 0 else "one", fault_type])
+        
+        # 将故障参数添加到文件名中，并统一参数位数
+        for param, value in fault_params.items():
+            if param == "percent":
+                formatted_value = f"{int(value):03d}"  # 百分比统一为3位数，例如 100 -> 100, 80 -> 080
+            elif param == "latency":
+                # 提取数字部分并统一为3位数，例如 1ms -> 001ms, 16ms -> 016ms
+                num_value = ''.join(filter(str.isdigit, value))
+                formatted_value = f"{int(num_value):03d}ms"
+            elif param == "loss":
+                formatted_value = f"{int(value):03d}"  # 丢包率统一为3位数，例如 5 -> 005, 20 -> 020
+            else:
+                formatted_value = str(value)  # 其他参数保持不变
+            file_name_parts.append(f"{param}_{formatted_value}")
+        
+        file_name = "_".join(file_name_parts) + ".yaml"
+        
+        # 写入YAML文件到faults_dis
+        file_path = os.path.join(self.faults_dis, file_name)
+        with open(file_path, 'w') as file:
+            yaml.dump(config, file, default_flow_style=False)
+        
+        print(f"Generated {file_name}")
+    
     def save_properties(self, properties):
         self.lock.acquire()
         last_path = os.path.join(self.data_dir, 'last.properties')

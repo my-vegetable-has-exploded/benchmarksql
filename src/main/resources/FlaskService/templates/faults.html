@@ -1,0 +1,141 @@
+{% extends "layout.html" %}
+
+{% block title %}故障管理{% endblock %}
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">添加故障用例</div>
+    <div class="card-body">
+        <form method="POST" action="/add_case">
+            <!-- 故障类型选择 -->
+            <div class="mb-3">
+                <label class="form-label">故障类型</label>
+                <select class="form-select" name="type" id="faultType" onchange="updateParams()">
+                    {% for type in fault_types %}
+                    <option value="{{ type }}">{{ type|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- 动态参数区域 -->
+            <div id="paramsContainer" class="mb-3">
+                {% for type, config in fault_types.items() %}
+                <div class="param-group" data-type="{{ type }}" style="display: none;">
+                    {% for param in config.params %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ param|title }}</label>
+                        <input type="text" class="form-control" name="param_{{ param }}" placeholder="输入{{ param }}值">
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- 通用参数 -->
+            <div class="row mb-3">
+                <div class="col">
+                    <label class="form-label">Zone类型</label>
+                    <select class="form-select" name="zone">
+                        {% for zone in zone_types %}
+                        <option value="{{ zone }}">{{ zone if zone else "不限" }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col">
+                    <label class="form-label">角色</label>
+                    <select class="form-select" name="role">
+                        {% for role in roles %}
+                        <option value="{{ role }}">{{ role|title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col">
+                    <label class="form-label">Pod数量</label>
+                    <input type="text" class="form-control" name="pod_count" placeholder="0表示全部">
+                </div>
+                <div class="col">
+                    <label class="form-label">持续时间(秒)</label>
+                    <input type="text" class="form-control" name="duration" placeholder="输入数字">
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- paymentWeight,orderStatusWeight,deliveryWeight,stockLevelWeight,storeWeight -->
+                <div class="col-md-4 mb-3">
+                    <label>paymentWeight</label>
+                    <input type="number" class="form-control" name="paymentWeight" value="0.0">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label>orderStatusWeight</label>
+                    <input type="number" class="form-control" name="orderStatusWeight" value="0.0">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label>deliveryWeight</label>
+                    <input type="number" class="form-control" name="deliveryWeight" value="0.0">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label>stockLevelWeight</label>
+                    <input type="number" class="form-control" name="stockLevelWeight" value="0.0">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label>storeWeight</label>
+                    <input type="number" class="form-control" name="storeWeight" value="0.0">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">提交</button>
+        </form>
+    </div>
+</div>
+
+<!-- 故障列表 -->
+<div class="card">
+    <div class="card-header">故障用例列表</div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>名称</th>
+                    <th>类型</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fault in faults %}
+                <tr>
+                    <td>{{ fault.name }}</td>
+                    <td>{{ fault.type }}</td>
+                    <td>
+                        <a href="/delete_case/{{ fault.name }}" class="btn btn-sm btn-danger"
+                            onclick="return confirm('确定删除吗？')">
+                            删除
+                        </a>
+                        <a href="/show_case/{{ fault.name }}" class="btn btn-sm btn-danger">
+                            查看
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" class="text-center">暂无故障用例</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+    // 简化的参数显示逻辑
+    function updateParams() {
+        document.querySelectorAll('.param-group').forEach(el => {
+            el.style.display = 'none';
+        });
+        const type = document.getElementById('faultType').value;
+        const target = document.querySelector(`.param-group[data-type="${type}"]`);
+        if (target) target.style.display = 'block';
+    }
+    updateParams();
+</script>
+{% endblock %}

@@ -117,7 +117,7 @@ def generate_config_file(zone_type, role, pod_count, fault_type, duration, fault
 if __name__ == "__main__":
     # 定义故障位置、角色、故障类型等
     zone_types = ["leader", "follower", "random", ""]  # 添加空字符串表示不指定zone
-    roles = ["storage", "compute"]
+    roles = ["storage", "compute", "metadata"]
     pod_counts = [0, 1]
     fault_types = ["fail", "io_fault", "net_delay", "net_loss"]
     duration = 120  # 持续时间，单位为秒

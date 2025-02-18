@@ -1,0 +1,337 @@
+{% extends "layout.html" %}
+
+{% block title %}配置管理{% endblock %}
+
+{% block content %}
+<form onLoad="setInterval(update_log, 1000)" bgcolor="#d0d0d0" method="post" class="container-fluid">
+    <!-- Action 按钮组 -->
+    <div class="row mb-4">
+        <div class="col d-flex gap-2 flex-wrap">
+            <input type="submit" name="action" class="btn btn-primary btn-sm" value="RUN" {{ state_run }}>
+            <input type="submit" name="action" class="btn btn-primary btn-sm" value="RUNALL" {{ state_run }}>
+            <input type="submit" name="action" class="btn btn-warning btn-sm" value="BUILD" {{ state_build }}>
+            <input type="submit" name="action" class="btn btn-danger btn-sm" value="DESTROY" {{ state_destroy }}>
+            <input type="submit" name="action" class="btn btn-secondary btn-sm" value="CANCEL" {{ state_cancel }}>
+            <input type="submit" name="action" class="btn btn-info btn-sm" value="REFRESH" {{ state_refresh }}>
+            <input type="submit" name="action" class="btn btn-success btn-sm" value="APPEND">
+        </div>
+    </div>
+
+    <!-- 配置输入区域 -->
+    <div class="row g-4">
+        <!-- 负载运行配置 -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-light">负载运行配置</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- 完整负载配置项 -->
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">数据库类型</label>
+                            <input type="text" name="db" value="{{ config.db|default('postgres') }}"
+                                class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">JDBC驱动</label>
+                            <input type="text" name="driver"
+                                value="{{ config.driver|default('org.postgresql.Driver') }}"
+                                class="form-control form-control-sm">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">应用</label>
+                            <input type="text" name="application" value="{{ config.application|default('Generic') }}"
+                                class="form-control form-control-sm">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">连接地址</label>
+                            <input type="text" name="conn" value="{{ config.conn }}"
+                                class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">用户名</label>
+                            <input type="text" name="user" value="{{ config.user }}"
+                                class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">密码</label>
+                            <input type="password" name="password" value="{{ config.password }}"
+                                class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small fw-bold">仓库数</label>
+                            <input type="number" name="warehouses" value="{{ config.warehouses|default(100) }}"
+                                class="form-control form-control-sm">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small fw-bold">加载线程</label>
+                            <input type="number" name="loadWorkers" value="{{ config.loadWorkers|default(16) }}"
+                                class="form-control form-control-sm">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">测试时间（分钟）</label>
+                            <input type="number" name="runMins" value="{{ config.runMins|default(3) }}"
+                                class="form-control form-control-sm">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">报告脚本</label>
+                            <input type="text" name="reportScript"
+                                value="{{ config.reportScript|default('./generateReport.py') }}"
+                                class="form-control form-control-sm">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统部署配置 -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-light">系统部署配置</div>
+                <div class="card-body">
+                    <!-- 基础配置 -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">K8s连接信息</label>
+                            <input type="text" name="sys.k8scli" value="" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">命名空间</label>
+                            <input type="text" name="sys.namespace" value="" class="form-control form-control-sm"
+                                required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">故障开始时间（分钟）</label>
+                            <input type="number" name="sys.faulttime" value="1" class="form-control form-control-sm"
+                                required>
+                        </div>
+                    </div>
+
+                    <!-- Zone配置 -->
+                    <div id="zones-container" class="row g-2">
+                        <button type="button" class="btn btn-success btn-sm" onclick="addZone()">添加区域</button>
+                        <!-- 初始zone -->
+                        <div class="col-12 zone-item">
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text">zone1</span>
+                                <input type="hidden" name="sys.zone1.name" value="zone1">
+                                <input type="text" name="sys.zone1.pods" class="form-control"
+                                    placeholder="输入Pod列表，用逗号分隔（例：pod1,pod2）" required>
+                                <button class="btn btn-outline-danger" type="button" onclick="removeZone(this)"
+                                    disabled>
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label"><i class="bi bi-star"></i> 主区域选择</label>
+                        <!-- <select name="sys.leaderzone" class="form-select" id="leaderzone-select" required>
+                            <option value="None" selected>None</option>
+                        </select> -->
+                        <input type="text" name="sys.leaderzone" class="form-control" , value="None" placeholder=""
+                            required>
+                    </div>
+
+                    <!-- 功能节点配置 -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <i class="bi bi-server"></i> 功能节点配置
+                            <small class="text-muted">（至少配置一种）</small>
+                        </div>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-info btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                                添加功能节点
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="addNodeGroup('storage')">存储节点</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="addNodeGroup('compute')">计算节点</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="addNodeGroup('metadata')">元数据节点</a></li>
+                            </ul>
+                        </div>
+                        <div class="card-body" id="node-container">
+                            <!-- 动态插入功能节点 -->
+                        </div>
+                    </div>
+
+
+                    <!-- 故障配置 -->
+                    <div class="mt-3">
+                        <label class="form-label small fw-bold">故障方案选择</label>
+                        <select name="sys.faults" class="form-select form-select-sm">
+                            {% for fault in faults_list %}
+                            <option value="">
+                                {{ fault.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+    // Zone管理
+    let zoneCounter = 1;
+    const zoneNames = new Set('zone1');
+
+    function addZone() {
+        zoneCounter++;
+        const newZoneName = `zone${zoneCounter}`;
+
+        const newZone = document.createElement('div');
+        newZone.className = 'col-12 zone-item';
+        newZone.innerHTML = `
+  <div class="input-group input-group-sm mb-2">
+    <span class="input-group-text">${newZoneName}</span>
+    <input type="hidden" name="sys.zones${zoneCounter}.name" value="${newZoneName}">
+    <input type="text" name="sys.zones${zoneCounter}.pods" 
+           class="form-control" 
+           placeholder="输入Pod列表，用逗号分隔"
+           required>
+    <button class="btn btn-danger btn-sm" type="button" 
+            onclick="removeZone(this)">
+      <i class="bi bi-trash-fill me-1"></i>删除
+    </button>
+  </div>`;
+        document.getElementById('zones-container').appendChild(newZone);
+        zoneNames.add(newZoneName);
+        updateZoneUI();
+    }
+
+    function removeZone(btn) {
+        const zoneItem = btn.closest('.zone-item');
+        const zoneName = zoneItem.querySelector('input[type="hidden"]').value;
+
+        zoneNames.delete(zoneName);
+        zoneItem.remove();
+        updateZoneUI();
+    }
+
+    function updateZoneUI() {
+        // 更新计数器
+        document.getElementById('zone-count').textContent = zoneNames.size;
+
+        // 更新主区域选择下拉列表
+        const select = document.getElementById('leaderzone-select');
+        // 保存当前选中的值
+        const currentValue = select.value;
+
+        // 清空并重建选项
+        select.innerHTML = '<option value="">请选择主区域</option>';
+
+        // 添加所有zone选项
+        Array.from(zoneNames).sort().forEach(zoneName => {
+            const option = document.createElement('option');
+            option.value = zoneName;
+            option.textContent = zoneName;
+            // 如果是之前选中的值，则保持选中状态
+            if (zoneName === currentValue) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+
+        // 至少保留一个zone
+        if (zoneNames.size === 0) {
+            addZone();
+        }
+    }
+
+    // 功能节点管理
+    const nodeTypes = new Set();
+
+    function addNodeGroup(type) {
+        if (nodeTypes.has(type)) {
+            alert('该类型节点已存在！');
+            return;
+        }
+
+        const typeName = {
+            storage: '存储',
+            compute: '计算',
+            metadata: '元数据'
+        }[type];
+
+        const nodeGroup = document.createElement('div');
+        nodeGroup.className = 'node-group mb-3';
+        nodeGroup.innerHTML = `
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="card-title">${typeName}节点</h6>
+          <button type="button" class="btn btn-sm btn-danger" 
+                onclick="this.closest('.node-group').remove(); nodeTypes.delete('${type}')">
+                <i class="bi bi-trash-fill me-1"></i>删除
+          </button>
+        </div>
+        <div class="row g-2">
+          <div class="col-8">
+            <input type="text" name="sys.${type}.pods" 
+                   class="form-control form-control-sm" 
+                   placeholder="Pod列表（例：${type}-pod1,${type}-pod2）"
+                   required>
+          </div>
+          <div class="col-4">
+            <input type="text" name="sys.${type}.volumePath" 
+                   class="form-control form-control-sm" 
+                   placeholder="存储路径（例：/data/${type}）"
+                   required>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+        document.getElementById('node-container').appendChild(nodeGroup);
+        nodeTypes.add(type);
+    }
+
+    // 表单验证
+    document.forms.addEventListener('submit', function (e) {
+        // 验证功能节点
+        if (nodeTypes.size === 0) {
+            alert('请至少配置一种功能节点！');
+            e.preventDefault();
+            return false;
+        }
+
+    });
+
+    var last_typ = "IDLE";
+
+    function update_log() {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            // alert("got called readyState=" + xhr.readyState);
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                // alert('got data');
+                var typ = document.getElementById("job_type");
+                var tim = document.getElementById("job_runtime");
+                var txt = document.getElementById("job_log");
+                var adjust = (txt.scrollTop + txt.offsetHeight) > (txt.scrollHeight - 5);
+
+                var result = JSON.parse(xhr.responseText);
+
+                typ.innerHTML = result[0];
+                tim.innerHTML = result[1];
+                txt.innerHTML = result[2];
+                if (adjust) {
+                    txt.scrollTop = txt.scrollHeight;
+                }
+
+                var new_typ = result[0];
+                if (new_typ == "IDLE" && last_typ != "IDLE") {
+                    var refresh = document.getElementById("refresh");
+                    refresh.click();
+                }
+                last_typ = new_typ;
+            }
+        }
+        xhr.open('GET', '{{ url_job_status }}', true);
+        xhr.send();
+    }
+</script>
+
+{% endblock %}

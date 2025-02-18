@@ -181,27 +181,26 @@ public class jTPCC {
       useWarehouseTo = useWarehouses;
     }
 
-    numMonkeys = Integer.parseInt(getProp(ini, "monkeys"));
-    numSUTThreads = Integer.parseInt(getProp(ini, "sutThreads"));
-    maxDeliveryBGThreads = Integer.parseInt(getProp(ini, "maxDeliveryBGThreads"));
-    maxDeliveryBGPerWH = Integer.parseInt(getProp(ini, "maxDeliveryBGPerWarehouse"));
-    rampupMins = Integer.parseInt(getProp(ini, "rampupMins"));
+    numMonkeys = Integer.parseInt(getProp(ini, "monkeys", "8"));
+    numSUTThreads = Integer.parseInt(getProp(ini, "sutThreads", "32"));
+    maxDeliveryBGThreads = Integer.parseInt(getProp(ini, "maxDeliveryBGThreads", "0"));
+    maxDeliveryBGPerWH = Integer.parseInt(getProp(ini, "maxDeliveryBGPerWarehouse", "0"));
+    rampupMins = Integer.parseInt(getProp(ini, "rampupMins", "1"));
     runMins = Integer.parseInt(getProp(ini, "runMins"));
-    rampupSUTMins = Integer.parseInt(getProp(ini, "rampupSUTMins"));
-    rampupTerminalMins = Integer.parseInt(getProp(ini, "rampupTerminalMins"));
-    reportIntervalSecs = Integer.parseInt(getProp(ini, "reportIntervalSecs"));
-    resultIntervalSecs = Integer.parseInt(getProp(ini, "resultIntervalSecs", "10"));
-    restartSUTThreadProb = Double.parseDouble(getProp(ini, "restartSUTThreadProbability"));
-    keyingTimeMultiplier = Double.parseDouble(getProp(ini, "keyingTimeMultiplier"));
-    thinkTimeMultiplier = Double.parseDouble(getProp(ini, "thinkTimeMultiplier"));
+    rampupSUTMins = Integer.parseInt(getProp(ini, "rampupSUTMins", "1"));
+    rampupTerminalMins = Integer.parseInt(getProp(ini, "rampupTerminalMins", "0"));
+    reportIntervalSecs = Integer.parseInt(getProp(ini, "reportIntervalSecs", "1"));
+    restartSUTThreadProb = Double.parseDouble(getProp(ini, "restartSUTThreadProbability", "0"));
+    keyingTimeMultiplier = Double.parseDouble(getProp(ini, "keyingTimeMultiplier", "0.1"));
+    thinkTimeMultiplier = Double.parseDouble(getProp(ini, "thinkTimeMultiplier", "0.1"));
     terminalMultiplier = Integer.parseInt(getProp(ini, "terminalMultiplier", "1"));
-    traceTerminalIO = Boolean.parseBoolean(getProp(ini, "traceTerminalIO"));
+    traceTerminalIO = Boolean.parseBoolean(getProp(ini, "traceTerminalIO", "false"));
     log.info("main, ");
-    paymentWeight = Double.parseDouble(getProp(ini, "paymentWeight"));
-    orderStatusWeight = Double.parseDouble(getProp(ini, "orderStatusWeight"));
-    deliveryWeight = Double.parseDouble(getProp(ini, "deliveryWeight"));
-    stockLevelWeight = Double.parseDouble(getProp(ini, "stockLevelWeight"));
-    storeWeight = Double.parseDouble(getProp(ini, "storeWeight"));
+    paymentWeight = Double.parseDouble(getProp(ini, "paymentWeight", "0"));
+    orderStatusWeight = Double.parseDouble(getProp(ini, "orderStatusWeight", "0"));
+    deliveryWeight = Double.parseDouble(getProp(ini, "deliveryWeight", "0"));
+    stockLevelWeight = Double.parseDouble(getProp(ini, "stockLevelWeight", "0"));
+    storeWeight = Double.parseDouble(getProp(ini, "storeWeight", "0"));
     newOrderWeight = 100.0 - paymentWeight - orderStatusWeight - deliveryWeight - stockLevelWeight - storeWeight;
     if (newOrderWeight < 0.0) {
       log.error("main, newOrderWeight is below zero");
@@ -211,7 +210,7 @@ public class jTPCC {
     log.info("main, {}", sb.toString());
     log.info("main, ");
 
-    rollbackPercent = Double.parseDouble(getProp(ini, "rollbackPercent", "1.01"));
+    rollbackPercent = Double.parseDouble(getProp(ini, "rollbackPercent", "0"));
     log.info("main, ");
 
     numTerms = 10 * terminalMultiplier;

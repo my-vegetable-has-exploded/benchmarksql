@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+
+{% block title %}运行结果{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">实时运行状态</h5>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <h6>当前任务类型：<span id="jobType" class="badge bg-primary">{{ job_status.type|default('IDLE') }}</span></h6>
+            </div>
+            <div class="col-md-6">
+                <h6>运行时间：<span id="jobRuntime" class="badge bg-secondary">{{ job_status.runtime|default('00:00:00') }}</span></h6>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">实时日志输出：</label>
+            <pre id="jobLog" class="bg-dark text-light p-3 rounded" style="height: 300px; overflow-y: auto;">{{ job_status.output|default('') }}</pre>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header bg-dark text-white">
+        <h2 class="mb-0">测试结果列表</h5>
+    </div>
+    <table border="2" width="80%">
+      <tr>
+        <th>Result&nbsp;Name</th>
+        <th>Start&nbsp;Time</th>
+        <th>State</th>
+        <th colspan="4">Action</th>
+      </tr>
+      {% for run_id, res_name, res_start, res_state in results %}
+        <tr>
+	  <td>{{ res_name }}</td>
+	  <td>{{ res_start }}</td>
+	  <td>{{ res_state }}</td>
+	  {% if res_state == "RUN" %}
+	    <td colspan="4" align="center">In&nbsp;Progress</td>
+	  {% endif %}
+	  {% if res_state == "RUNFAILED" %}
+	    <td><a href="{{ url_for('result_fault') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Fault</a></td>
+	    <td><a href="{{ url_for('result_log') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Log</a></td>
+	    <td><a href="{{ url_for('result_show') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Report</a></td>
+	    <td><a href="{{ url_for('result_delete') }}?run_id={{ run_id }}">Delete&nbsp;Result</a></td>
+	  {% endif %}
+	  {% if res_state == "CANCELED" %}
+	    <td><a href="{{ url_for('result_fault') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Fault</a></td>
+	    <td><a href="{{ url_for('result_log') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Log</a></td>
+	    <td><a href="{{ url_for('result_show') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Report</a></td>
+	    <td><a href="{{ url_for('result_delete') }}?run_id={{ run_id }}">Delete&nbsp;Result</a></td>
+	  {% endif %}
+	  {% if res_state == "FINISHED" %}
+	    <td><a href="{{ url_for('result_fault') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Fault</a></td>
+	    <td><a href="{{ url_for('result_log') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Log</a></td>
+	    <td><a href="{{ url_for('result_show') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Report</a></td>
+	    <td><a href="{{ url_for('result_delete') }}?run_id={{ run_id }}">Delete&nbsp;Result</a></td>
+	  {% endif %}
+	  {% if res_state == "ALLFINISHED" %}
+	    <td><a href="{{ url_for('result_detail') }}?run_id={{ run_id }}" target="_blank">Show&nbsp;Detail</a></td>
+	    <td><a href="{{ url_for('result_delete') }}?run_id={{ run_id }}">Delete&nbsp;Result</a></td>
+	  {% endif %}
+	  {% if res_state == "ALLRUNNING" %}
+	    <td colspan="4" align="center">In&nbsp;Progress</td>
+	  {% endif %}
+	</tr>
+      {% endfor %}
+    </table>
+</div>
+{% endblock %} 
