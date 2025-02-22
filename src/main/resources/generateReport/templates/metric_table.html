@@ -1,0 +1,39 @@
+<p>
+  <table width="100%" border="2">
+    <tr>
+      <th width="25%"><b>Metric</b></th>
+      <th width="25%"><b>Value</b></th>
+      <th width="50%"><b>Description</b></th>
+    </tr>
+    <tr>
+      <td align="left"><b>RTO (Recovery Time Objective)</b></td>
+      <td align="right">{{ reliable_metrics.rto }} ms</td>
+      <td align="left">The maximum acceptable time to restore operations after a failure.</td>
+    </tr>
+    <tr>
+      <td align="left"><b>RPO (Recovery Point Objective)</b></td>
+      <td align="right">{{ reliable_metrics.rpo }} ms</td>
+      <td align="left">The maximum acceptable amount of data loss measured in time.</td>
+    </tr>
+    <tr>
+      <td align="left"><b>Recovery Time Factor</b></td>
+      <td align="right">{{ reliable_metrics['recovery_time_factor'] }} s</td>
+      <td align="left">A factor indicating the efficiency of recovery time.</td>
+    </tr>
+    <tr>
+      <td align="left"><b>Total Performance Factor</b></td>
+      <td align="right">{{ reliable_metrics['total_performance_factor'] }}%</td>
+      <td align="left">A factor representing the overall performance during steady state.</td>
+    </tr>
+    <tr>
+      <td align="left"><b>Absorption Factor</b></td>
+      <td align="right">{{ reliable_metrics['absorption_factor'] }}%</td>
+      <td align="left">A factor indicating the system's ability to absorb workload changes.</td>
+    </tr>
+    <tr>
+      <td align="left"><b>Recovery Factor</b></td>
+      <td align="right">{{ reliable_metrics['recovery_factor'] }}%</td>
+      <td align="left">A factor representing the system's recovery efficiency.</td>
+    </tr>
+  </table>
+</p>

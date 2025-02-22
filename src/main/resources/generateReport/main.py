@@ -130,6 +130,14 @@ def generate_html(result, template, os_metrics):
 
     plot = bmsqlPlot.bmsqlPlot(result)
 
+    reliable_metrics = {}
+    reliable_metrics['rpo'] = result.rpo
+    reliable_metrics['rto'] = result.rto
+    reliable_metrics['recovery_time_factor'] = result.steady_metrics[-1]['recovery_time_factor']
+    reliable_metrics['total_performance_factor'] = result.steady_metrics[-1]['total_performance_factor']
+    reliable_metrics['absorption_factor'] = result.steady_metrics[-1]['absorption_factor']
+    reliable_metrics['recovery_factor'] = result.steady_metrics[-1]['recovery_factor']
+
     # ----
     # Collect all the data the template needs
     # ----
@@ -154,6 +162,7 @@ def generate_html(result, template, os_metrics):
         'cpu_svg': plot.cpu_svg,
         'memory_svg': plot.memory_svg,
         'os_metrics': os_metrics,
+        'reliable_metrics': reliable_metrics,
     }
 
     # Propagate the mix_warn flag up to the toplevel

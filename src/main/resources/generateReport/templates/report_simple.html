@@ -1,7 +1,7 @@
 <html>
 <head>
   <title>
-    BenchmarkSQL Run #{{ runinfo['runID'] }}
+    Run #{{ runinfo['runID'] }}
   </title>
 
   {% include "bmsql.css" %}
@@ -9,7 +9,7 @@
 </head>
 <body bgcolor="#ffffff">
   <h1>
-    BenchmarkSQL Run #{{ runinfo['runID'] }}
+    Run #{{ runinfo['runID'] }}
   </h1>
 
   <p>
@@ -28,7 +28,8 @@
     Result Summary
   </h2>
   {% include "inc_summary_table.html" %}
-  {% include "inc_summary_explain.html" %}
+  {% include "metric_table.html" %}
+  <!-- {% include "inc_summary_explain.html" %} -->
 
   <h2>
     NEW_ORDER Transactions per Minute
@@ -36,7 +37,7 @@
   <p>
     {% include "img_nopm.html" %}
   </p>
-  {% include "inc_nopm_explain.html" %}
+  <!-- {% include "inc_nopm_explain.html" %} -->
 
   <h2>
     NEW_ORDER Latency and Delay
@@ -47,7 +48,7 @@
   <p>
 	<img src="data:image/svg+xml;base64,{{ delay_max_svg('NEW_ORDER') }}" />
   </p>
-  {% include "inc_latency_explain.html" %}
+  <!-- {% include "inc_latency_explain.html" %} -->
 
   <h2>
     PAYMENT Latency and Delay

@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
-    <title>{% block title %}BenchmarkSQL{% endblock %}</title>
+    <!-- <title>{% block title %}BenchmarkSQL{% endblock %}</title> -->
     {% block extra_head %}{% endblock %}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">BenchmarkSQL</a>
+            <a class="navbar-brand" href="/">分布式数据库可靠性评测工具</a>
             <div class="navbar-nav">
                 <a class="nav-link" href="{{ url_for('show_config') }}">配置</a>
                 <a class="nav-link" href="{{ url_for('show_results') }}">结果</a>
