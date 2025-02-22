@@ -113,7 +113,7 @@ def show_config():
     data = {}
     data['current_job_type'] = bench.get_job_type()
     data['current_job_runtime'] = bench.get_job_runtime()
-    data['form'] = form
+    # data['form'] = form
     data['properties'] = bench.get_properties()
 
     if data['current_job_type'] == 'IDLE':
