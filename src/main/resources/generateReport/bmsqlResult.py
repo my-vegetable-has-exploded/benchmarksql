@@ -516,7 +516,7 @@ class bmsqlResult:
         
         # allow 10% difference between local min mse and the recovery mse
         for i in range(0, minn1):
-            if mse[i] < 1.1*mse[minn1]:
+            if mse[i] < 1.1*mse[minn1] or abs(mse[i] - mse[minn1])<1:
                 minn1 = i
                 break        
 
@@ -548,7 +548,7 @@ class bmsqlResult:
         
         # allow 10% difference between local min mse and the recovery mse
         for i in range(0, minn2):
-            if mse[i] < 1.1*mse[minn2]:
+            if mse[i] < 1.1*mse[minn2] or abs(mse[i] - mse[minn2])<1:
                 minn2 = i
                 break        
         
