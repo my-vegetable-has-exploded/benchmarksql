@@ -493,7 +493,7 @@ class bmsqlResult:
         # ----
         # Use pymser to find the steady state
         # ----
-        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=True, uncertainty='uSD', print_results=True)
+        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=False, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
 
         mse = steady_result['MSE']
         # mse = mse[:math.floor(0.8*len(mse))]
@@ -501,18 +501,18 @@ class bmsqlResult:
         # print("mse: {}", mse)
 
         # find min mse
-        minn1 = 0
-        k = 10
-        # 找到第一个是比前后k个都小的点
-        for i in range(0, len(mse)):
-            is_local_min = True
-            for j in range(max(0, i-k), min(len(mse), i+k+1)):
-                if mse[j] < mse[i]:
-                    is_local_min = False
-                    break
-            if is_local_min:
-                minn1 = i
-                break
+        minn1 = steady_result['t0']
+        # k = 10
+        # # 找到第一个是比前后k个都小的点
+        # for i in range(0, len(mse)):
+        #     is_local_min = True
+        #     for j in range(max(0, i-k), min(len(mse), i+k+1)):
+        #         if mse[j] < mse[i]:
+        #             is_local_min = False
+        #             break
+        #     if is_local_min:
+        #         minn1 = i
+        #         break
         
         # allow 10% difference between local min mse and the recovery mse
         for i in range(0, minn1):
@@ -525,7 +525,7 @@ class bmsqlResult:
         # ----
         txn_stat = savgol_filter(txn_stat, 11, 3)
         sd = txn_stat[fault_start:period_end]
-        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=True, uncertainty='uSD', print_results=True)
+        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=False, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
 
         mse = steady_result['MSE']
         # mse = mse[:math.floor(0.8*len(mse))]
@@ -533,18 +533,18 @@ class bmsqlResult:
         # print("mse: {}", mse)
 
         # find min mse
-        minn2 = 0
-        k = 10
-        # 找到第一个是比前后k个都小的点
-        for i in range(0, len(mse)):
-            is_local_min = True
-            for j in range(max(0, i-k), min(len(mse), i+k+1)):
-                if mse[j] < mse[i]:
-                    is_local_min = False
-                    break
-            if is_local_min:
-                minn2 = i
-                break
+        minn2 = steady_result['t0']
+        # k = 10
+        # # 找到第一个是比前后k个都小的点
+        # for i in range(0, len(mse)):
+        #     is_local_min = True
+        #     for j in range(max(0, i-k), min(len(mse), i+k+1)):
+        #         if mse[j] < mse[i]:
+        #             is_local_min = False
+        #             break
+        #     if is_local_min:
+        #         minn2 = i
+        #         break
         
         # allow 10% difference between local min mse and the recovery mse
         for i in range(0, minn2):
