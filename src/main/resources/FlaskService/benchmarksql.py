@@ -424,6 +424,8 @@ class BenchmarkSQL:
                 metric_data['fault_type'] = 'net_loss'
             elif 'fail' in fault_name:
                 metric_data['fault_type'] = 'fail'
+            elif 'cpu_stress' in fault_name:
+                metric_data['fault_type'] = 'cpu_stress'
             else:
                 metric_data['fault_type'] = 'unknown'
             # read metrics from result_dir/data/metrics.csv

@@ -466,7 +466,7 @@ class bmsqlResult:
         # 3、 if not empty, only one fault, just use first fault start time
         # 4、 if empty, check spec.entry, and parse the fault workflow recursively, compute the fault time according to serial/parallel and deadline(duration)
         
-        if 'action' in fault_file['spec']:
+        if 'entry' not in fault_file['spec']:
             fault_seconds.append(first_fault_seconds)
         else :
             # parse the fault workflow
@@ -516,9 +516,13 @@ class bmsqlResult:
         
         # allow 10% difference between local min mse and the recovery mse
         for i in range(0, minn1):
-            if mse[i] < 1.1*mse[minn1] or abs(mse[i] - mse[minn1])<1:
+            if mse[i] < 1.05*mse[minn1] or abs(mse[i] - mse[minn1])<1:
                 minn1 = i
                 break        
+
+        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
+
+        minn1 = max(minn1, steady_result['t0'])
 
         # ----
         # Use pymser to find the steady state for filtered txn_stat
@@ -548,9 +552,13 @@ class bmsqlResult:
         
         # allow 10% difference between local min mse and the recovery mse
         for i in range(0, minn2):
-            if mse[i] < 1.1*mse[minn2] or abs(mse[i] - mse[minn2])<1:
+            if mse[i] < 1.05*mse[minn2] or abs(mse[i] - mse[minn2])<1:
                 minn2 = i
                 break        
+
+        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
+
+        minn2 = max(minn2, steady_result['t0'])
         
         minn = min(minn1, minn2)
         print("recovery end {}",minn, "s", "recovery end under non-filtered txn_stat: ", minn1, "s", "recovery end under filtered txn_stat: ", minn2, "s")
@@ -564,14 +572,14 @@ class bmsqlResult:
         steady_metric['recovery_factor'] = min(recovery_factor, 1.0)
 
         if recovery_time != 0:
-            total_performance = sum(original_txn_stat[fault_start:fault_start+recovery_time])/ recovery_time
+            total_performance = sum(original_txn_stat[fault_start:period_end])/ (period_end - fault_start)
             total_performance_factor = total_performance / performance_desired
             steady_metric['total_performance_factor'] = min(total_performance_factor, 1)
             absorption_factor = min(original_txn_stat[fault_start:fault_start+recovery_time]) / performance_desired
             steady_metric['absorption_factor'] = min(absorption_factor, 1)
         else:
-            steady_metric['total_performance_factor'] = recovery_factor
-            steady_metric['absorption_factor'] = recovery_factor
+            steady_metric['total_performance_factor'] = min(recovery_factor, 1)
+            steady_metric['absorption_factor'] = min(recovery_factor, 1)
         
         print(f"Steady state metrics: {steady_metric}")
         return steady_metric

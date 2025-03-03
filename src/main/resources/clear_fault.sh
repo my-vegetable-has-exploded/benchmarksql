@@ -14,6 +14,8 @@ kubectl delete podchaos --all -n chaos-testing
 
 # 删除 chaos-testing 命名空间下的所有 networkchaos
 kubectl delete networkchaos --all -n chaos-testing
+
+kubectl delete StressChaos --all -n chaos-testing
 EOF
 
 # 脚本结束
