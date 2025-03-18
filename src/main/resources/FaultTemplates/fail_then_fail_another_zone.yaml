@@ -1,0 +1,4 @@
+template: "fail_then_fail_another.yaml"
+# select the leader pod
+duration: "25m"
+faulttime: "5min"

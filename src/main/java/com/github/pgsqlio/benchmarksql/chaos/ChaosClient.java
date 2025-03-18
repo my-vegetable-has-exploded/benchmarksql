@@ -84,7 +84,7 @@ public class ChaosClient {
 			new Thread(() -> {
 				try {
 					if (duration > 0) {
-						Thread.sleep(duration + 10000);
+						Thread.sleep(duration);
 					} else {
 						// wait for injection to take effect
 						Thread.sleep(10000);

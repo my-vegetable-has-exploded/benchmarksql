@@ -67,7 +67,7 @@ class bmsqlResult:
         with open(metrics_fname, 'w', newline='') as fd:
             wrt = csv.writer(fd)
             wrt.writerow(['rto', 'rpo', 'recovery_time_factor', 'total_performance_factor', 'absorption_factor', 'recovery_factor'])
-            # wrt.writerow([self.rto, self.rpo, self.steady_metric['recovery_time_factor'], self.steady_metric['total_performance_factor'], self.steady_metric['absorption_factor'], self.steady_metric['recovery_factor']])
+            wrt.writerow([self.rto, self.rpo, self.steady_metrics[-1]['recovery_time_factor'], self.steady_metrics[-1]['total_performance_factor'], self.steady_metrics[-1]['absorption_factor'], self.steady_metrics[-1]['recovery_factor']])
 
         # self.stage_latency()
         # self.stage_throughput()
@@ -328,7 +328,7 @@ class bmsqlResult:
 
             # select a interrupt interval, which is the transaction gap there is no successful transaction after it for 5*average_latency
             for (row, row_next) in zip(sorted_txn_trace[:-1], sorted_txn_trace[1:]):
-                if int(row_next['end']) > warmup_ts and int(row_next['end']) - int(row['end']) > 5 * p95:
+                if int(row_next['end']) > warmup_ts and int(row_next['end']) - int(row['end']) > (5 * p95 if p95 is not None else 2000):
                     intervals_per_thread[thread_id].append((int(row['end']), int(row_next['end'])))
 
         # compute sum of interval duration for each thread_id, and compute the average interrupt time according thread_id
@@ -485,13 +485,52 @@ class bmsqlResult:
             'end_time': period_end,
         }
 
+        original_txn_stat = txn_stat
+
         # ----
         # Use pymser to find the steady state
         # ----
+        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=False, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
+
+        mse = steady_result['MSE']
+        # mse = mse[:math.floor(0.8*len(mse))]
+        # mse = savgol_filter(mse, 10, 1)
+        # print("mse: {}", mse)
+
+        # compute avaraage performance in later 1min or all time if recovery time is less than 1min
+        
+        performance_recovery = sum(original_txn_stat[fault_start+steady_result['t0']: min(fault_start+steady_result['t0']+60, period_end)])/ min(60, period_end - fault_start - steady_result['t0'])
+
+        # find min mse
+        minn1 = steady_result['t0']
+        # k = 10
+        # # 找到第一个是比前后k个都小的点
+        # for i in range(0, len(mse)):
+        #     is_local_min = True
+        #     for j in range(max(0, i-k), min(len(mse), i+k+1)):
+        #         if mse[j] < mse[i]:
+        #             is_local_min = False
+        #             break
+        #     if is_local_min:
+        #         minn1 = i
+        #         break
+        
+        # allow 10% difference between local min mse and the recovery mse
+        for i in range(0, minn1):
+            if mse[i] < 1.05*mse[minn1] or abs(mse[i] - mse[minn1])<1:
+                minn1 = i
+                break        
+
+        # steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
+
+        # minn1 = min(minn1, steady_result['t0'])
+
+        # ----
+        # Use pymser to find the steady state for filtered txn_stat
+        # ----
+        txn_stat = savgol_filter(txn_stat, 11, 3)
         sd = txn_stat[fault_start:period_end]
-        sd = sd[:]
-        sd = savgol_filter(sd, 10, 2)
-        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=True, uncertainty='uSD', print_results=True)
+        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=False, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
 
         mse = steady_result['MSE']
         # mse = mse[:math.floor(0.8*len(mse))]
@@ -499,39 +538,58 @@ class bmsqlResult:
         # print("mse: {}", mse)
 
         # find min mse
-        minn = 0
-        k = 15
-        # 找到第一个是比前后k个都小的点
-        for i in range(0, len(mse)):
-            is_local_min = True
-            for j in range(max(0, i-k), min(len(mse), i+k+1)):
-                if mse[j] < mse[i]:
-                    is_local_min = False
-                    break
-            if is_local_min:
-                minn = i
-                break
-            
-        print("recovery end {}",minn)
+        minn2 = steady_result['t0']
+        # k = 10
+        # # 找到第一个是比前后k个都小的点
+        # for i in range(0, len(mse)):
+        #     is_local_min = True
+        #     for j in range(max(0, i-k), min(len(mse), i+k+1)):
+        #         if mse[j] < mse[i]:
+        #             is_local_min = False
+        #             break
+        #     if is_local_min:
+        #         minn2 = i
+        #         break
+        
+        # allow 10% difference between local min mse and the recovery mse
+        for i in range(0, minn2):
+            if mse[i] < 1.05*mse[minn2] or abs(mse[i] - mse[minn2])<1:
+                minn2 = i
+                break        
+
+        # steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
+
+        # minn2 = min(minn2, steady_result['t0'])
+        
+        minn = min(minn1, minn2)
+
+        # print("recovery end {}",minn, "s", "recovery end under non-filtered txn_stat: ", minn1, "s", "recovery end under filtered txn_stat: ", minn2, "s", "performance desired: ", performance_desired)
+
+        while txn_stat[fault_start+minn] < 0.9*performance_recovery and (fault_start+minn) < period_end:
+            minn+=1
+
+        print("recovery end {}",minn, "s", "recovery end under non-filtered txn_stat: ", minn1, "s", "recovery end under filtered txn_stat: ", minn2, "s")
+
 
         recovery_time = minn
         steady_metric['recovery_time_factor'] = minn
 
-        if recovery_time != 0:
-            total_performance = sum(txn_stat[fault_start:fault_start+recovery_time])/ recovery_time
-            total_performance_factor = total_performance / performance_desired
-            steady_metric['total_performance_factor'] = total_performance_factor
-            absorption_factor = min(txn_stat[fault_start:fault_start+recovery_time]) / performance_desired
-            steady_metric['absorption_factor'] = absorption_factor
-        else:
-            steady_metric['total_performance_factor'] = -1
-            steady_metric['absorption_factor'] = -1
-        
-        # avaerage performance in later 1min or all time if recovery time is less than 1min
-        performance_recovery = sum(txn_stat[fault_start+recovery_time: min(fault_start+recovery_time+60, period_end)])/ min(60, period_end - fault_start - recovery_time)
-        recovery_factor = performance_recovery / performance_desired
-        steady_metric['recovery_factor'] = recovery_factor
 
+        # avaerage performance in later 1min or all time if recovery time is less than 1min
+        performance_recovery = sum(original_txn_stat[fault_start+recovery_time: min(fault_start+recovery_time+60, period_end)])/ min(60, period_end - fault_start - recovery_time)
+        recovery_factor = performance_recovery / performance_desired
+        steady_metric['recovery_factor'] = min(recovery_factor, 1.0)
+
+        if recovery_time != 0:
+            total_performance = sum(original_txn_stat[fault_start:period_end])/ (period_end - fault_start)
+            total_performance_factor = total_performance / performance_desired
+            steady_metric['total_performance_factor'] = min(total_performance_factor, 1)
+            absorption_factor = min(original_txn_stat[fault_start:fault_start+recovery_time]) / performance_desired
+            steady_metric['absorption_factor'] = min(absorption_factor, 1)
+        else:
+            steady_metric['total_performance_factor'] = min(recovery_factor, 1)
+            steady_metric['absorption_factor'] = min(recovery_factor, 1)
+        
         print(f"Steady state metrics: {steady_metric}")
         return steady_metric
 
@@ -553,6 +611,9 @@ class bmsqlResult:
         startTS = (int(runinfo['startTS']))
         txn_stat = [0 for i in range(total_seconds)]
         for row in self.txn_trace:
+            # if this transaction is not successful, ignore it
+            if row['error'] == '1' or row['rollback'] == '1':
+                continue
             end = (int(row['end']) - startTS)//1000
             if end >=0 and end < total_seconds:
                 txn_stat[end]+=1

@@ -1,0 +1,16 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: net-delay
+  namespace: chaos-testing
+spec:
+  action: delay
+  mode: all
+  selector:
+    pods:
+      tidb3: [tidb3-tikv-0,tidb3-tikv-1,tidb3-tikv-2,tidb3-tikv-3,tidb3-tikv-4,tidb3-tikv-5,tidb3-tidb-0,tidb3-tidb-1,tidb3-tidb-2]
+  delay:
+    latency: '8ms'
+    correlation: '0'
+    jitter: '0ms'
+  duration: '120s'

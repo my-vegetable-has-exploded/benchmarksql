@@ -12,7 +12,7 @@ data = defaultdict(lambda: defaultdict(list))
 for dir_name in os.listdir(base_dir):
     # 448 - 
 	# 551
-    if re.match(r'result_\d{6}', dir_name) and dir_name >= 'result_000551':
+    if re.match(r'result_\d{6}', dir_name) and dir_name >= 'result_000394':
         dir_path = os.path.join(base_dir, dir_name)
         console_log_path = os.path.join(dir_path, 'console.log')
         
@@ -40,7 +40,8 @@ for dir_name in os.listdir(base_dir):
 # 按distributedNodes和distributedRatio排序输出
 for distributedNodes in sorted(data.keys()):
     for distributedRatio in sorted(data[distributedNodes].keys()):
-        recovery_factors = sorted(data[distributedNodes][distributedRatio])[1:-1]
+        # recovery_factors = sorted(data[distributedNodes][distributedRatio])[1:-1]
+        recovery_factors = sorted(data[distributedNodes][distributedRatio])
         if len(recovery_factors) == 0:
             continue
         average_recovery_factor = sum(recovery_factors) / len(recovery_factors)
