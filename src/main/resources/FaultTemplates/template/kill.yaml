@@ -1,0 +1,9 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata: {name: kill-pod, namespace: chaos-testing}
+spec:
+  action: pod-kill
+  mode: all
+  selector:
+    pods:
+      $NAMESPACE: '$INJECTPODS'

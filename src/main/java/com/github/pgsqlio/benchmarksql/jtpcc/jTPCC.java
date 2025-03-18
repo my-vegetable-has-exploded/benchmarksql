@@ -190,6 +190,7 @@ public class jTPCC {
     rampupSUTMins = Integer.parseInt(getProp(ini, "rampupSUTMins", "1"));
     rampupTerminalMins = Integer.parseInt(getProp(ini, "rampupTerminalMins", "0"));
     reportIntervalSecs = Integer.parseInt(getProp(ini, "reportIntervalSecs", "1"));
+    resultIntervalSecs = Integer.parseInt(getProp(ini, "resultIntervalSecs", "1"));
     restartSUTThreadProb = Double.parseDouble(getProp(ini, "restartSUTThreadProbability", "0"));
     keyingTimeMultiplier = Double.parseDouble(getProp(ini, "keyingTimeMultiplier", "0.1"));
     thinkTimeMultiplier = Double.parseDouble(getProp(ini, "thinkTimeMultiplier", "0.1"));
