@@ -1,34 +1,33 @@
 apiVersion: chaos-mesh.org/v1alpha1
 kind: Workflow
 metadata:
-  name: failure-and-kill-example
+  name: failure-and-failure-example
 spec:
-  entry: failure-and-kill
+  entry: failure-and-failure
   templates:
-    - name: failure-and-kill
+    - name: failure-and-failure
       templateType: Serial
-      deadline: 600m
+      deadline: 600s
       children:
         - workflow-failure1-chaos
         # - suspending
         - workflow-failure2-chaos
     - name: workflow-failure1-chaos
       templateType: PodChaos
+      deadline: '20m'
       podChaos:
-        action: pod-kill
-        mode: one
+        action: pod-failure
+        mode: all
         selector:
-          namespaces:
-            - '$NAMESPACE'
-          labelSelectors: '$RANDOMPOD1'
+          pods:
+            tidb3: [tidb3-tikv-1,tidb3-tikv-4,tidb3-tidb-2]
     - name: workflow-failure2-chaos
       templateType: PodChaos
       # TODO: may need to relax ?
-      deadline: '$FAILUREDURATION'
+      deadline: '5m'
       podChaos:
         action: pod-failure
-        mode: one
+        mode: all
         selector:
-          namespaces:
-            - '$NAMESPACE'
-          labelSelectors: '$RANDOMPOD2'
+          pods:
+            tidb3: [tidb3-tikv-0,tidb3-tikv-3,tidb3-tidb-0]

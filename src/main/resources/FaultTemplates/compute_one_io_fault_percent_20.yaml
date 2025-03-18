@@ -1,5 +1,0 @@
-duration: 120s
-injectpods: $compute-1
-percent: 20
-template: io_fault.yaml
-volumePath: $compute.volumePath

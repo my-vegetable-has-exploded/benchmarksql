@@ -149,8 +149,8 @@
                 <thead>
                     <tr>
                         <th class="text-center">Fault Type</th>
-                        <th class="text-center">Average RPO</th>
-                        <th class="text-center">Average RTO</th>
+                        <th class="text-center">Average data loss</th>
+                        <th class="text-center">Average interrupte time</th>
                         <th class="text-center">Average Recovery Time Factor</th>
                         <th class="text-center">Average Total Performance Factor</th>
                         <th class="text-center">Average Absorption Factor</th>
@@ -368,6 +368,16 @@
         // 更新故障类型汇总表格
         function updateFaultSummary() {
             const faultData = {};
+            let allTypesData = {
+                totalWeight: 0,
+                rpo: 0,
+                rto: 0,
+                recoveryTimeFactor: 0,
+                totalPerformanceFactor: 0,
+                absorptionFactor: 0,
+                recoveryFactor: 0,
+                stability: 0
+            };
 
             // 遍历所有用例行
             document.querySelectorAll('tbody tr').forEach(row => {
@@ -398,12 +408,23 @@
                 data.absorptionFactor += metric.absorption_factor * weight;
                 data.recoveryFactor += metric.recovery_factor * weight;
                 data.stability += calculateStabilityScore(metric) * weight;
+
+                // 同时累加到所有类型汇总
+                allTypesData.totalWeight += weight;
+                allTypesData.rpo += metric.rpo * weight;
+                allTypesData.rto += metric.rto * weight;
+                allTypesData.recoveryTimeFactor += metric.recovery_time_factor * weight;
+                allTypesData.totalPerformanceFactor += metric.total_performance_factor * weight;
+                allTypesData.absorptionFactor += metric.absorption_factor * weight;
+                allTypesData.recoveryFactor += metric.recovery_factor * weight;
+                allTypesData.stability += calculateStabilityScore(metric) * weight;
             });
 
             // 更新汇总表格
             const tbody = document.querySelector('#fault-summary-table tbody');
             tbody.innerHTML = '';
 
+            // 先添加各个故障类型行
             for (const [type, data] of Object.entries(faultData)) {
                 const row = document.createElement('tr');
 
@@ -422,10 +443,38 @@
         `;
                 tbody.appendChild(row);
             }
+
+            // 添加所有故障类型汇总行
+            if (allTypesData.totalWeight > 0) {
+                const allTypesRow = document.createElement('tr');
+                allTypesRow.classList.add('table-primary');  // 使用Bootstrap的表格颜色突出显示汇总行
+                
+                const calcAvg = (value) => (value / allTypesData.totalWeight).toFixed(2);
+                
+                allTypesRow.innerHTML = `
+            <td class="text-center"><strong>All Fault Types</strong></td>
+            <td class="text-center"><strong>${calcAvg(allTypesData.rpo)}</strong></td>
+            <td class="text-center"><strong>${calcAvg(allTypesData.rto)}</strong></td>
+            <td class="text-center"><strong>${calcAvg(allTypesData.recoveryTimeFactor)}</strong></td>
+            <td class="text-center"><strong>${calcAvg(allTypesData.totalPerformanceFactor)}</strong></td>
+            <td class="text-center"><strong>${calcAvg(allTypesData.absorptionFactor)}</strong></td>
+            <td class="text-center"><strong>${calcAvg(allTypesData.recoveryFactor)}</strong></td>
+            <td class="text-center"><strong>${calcAvg(allTypesData.stability)}</strong></td>
+        `;
+                tbody.appendChild(allTypesRow);
+            }
         }
 
-        // 在权重变化时同时更新汇总和总分
+        // 修改事件监听器设置，确保包含所有权重输入框
         document.querySelectorAll('.weight-input').forEach(input => {
+            input.addEventListener('input', () => {
+                updateAllScores();
+                updateFaultSummary();
+            });
+        });
+
+        // 特别为案例权重添加事件监听器
+        document.querySelectorAll('.case-weight').forEach(input => {
             input.addEventListener('input', () => {
                 updateAllScores();
                 updateFaultSummary();

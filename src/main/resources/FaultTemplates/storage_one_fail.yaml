@@ -1,3 +1,0 @@
-duration: 120s
-injectpods: $storage-1
-template: fail.yaml

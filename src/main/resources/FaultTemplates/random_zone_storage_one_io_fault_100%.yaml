@@ -1,5 +1,0 @@
-duration: 120s
-percent: 100
-podname: $zone.random-storage-1
-template: io_fault.yaml
-volumePath: $storage.volumePath

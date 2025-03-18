@@ -1,0 +1,5 @@
+duration: 120s
+injectpods: $zone.random-compute-0
+load: 50
+template: cpu_stress.yaml
+workers: 2

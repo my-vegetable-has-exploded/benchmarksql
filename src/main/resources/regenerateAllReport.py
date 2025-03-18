@@ -9,6 +9,10 @@ for root, dirs, files in os.walk(service_data_dir):
     for dir_name in dirs:
         # 构建 resultdir 的路径
         resultdir = os.path.join(root, dir_name)
+
+        # 检查后四位数字大于 962的目录
+        if int(dir_name[-4:]) >= 100:
+            continue
         
         # 构建要执行的命令
         command = ['./generateReport.py', '-t', 'report_simple.html', '--resultdir', resultdir]

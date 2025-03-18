@@ -500,6 +500,10 @@ class bmsqlResult:
         # mse = savgol_filter(mse, 10, 1)
         # print("mse: {}", mse)
 
+        # compute avaraage performance in later 1min or all time if recovery time is less than 1min
+        
+        performance_recovery = sum(original_txn_stat[fault_start+steady_result['t0']: min(fault_start+steady_result['t0']+60, period_end)])/ min(60, period_end - fault_start - steady_result['t0'])
+
         # find min mse
         minn1 = steady_result['t0']
         # k = 10
@@ -520,9 +524,9 @@ class bmsqlResult:
                 minn1 = i
                 break        
 
-        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
+        # steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
 
-        minn1 = max(minn1, steady_result['t0'])
+        # minn1 = min(minn1, steady_result['t0'])
 
         # ----
         # Use pymser to find the steady state for filtered txn_stat
@@ -556,15 +560,23 @@ class bmsqlResult:
                 minn2 = i
                 break        
 
-        steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
+        # steady_result = pymser.equilibrate(txn_stat[fault_start:period_end], LLM=True, batch_size=1, ADF_test=False, uncertainty='uSD', print_results=True)
 
-        minn2 = max(minn2, steady_result['t0'])
+        # minn2 = min(minn2, steady_result['t0'])
         
         minn = min(minn1, minn2)
+
+        # print("recovery end {}",minn, "s", "recovery end under non-filtered txn_stat: ", minn1, "s", "recovery end under filtered txn_stat: ", minn2, "s", "performance desired: ", performance_desired)
+
+        while txn_stat[fault_start+minn] < 0.9*performance_recovery and (fault_start+minn) < period_end:
+            minn+=1
+
         print("recovery end {}",minn, "s", "recovery end under non-filtered txn_stat: ", minn1, "s", "recovery end under filtered txn_stat: ", minn2, "s")
+
 
         recovery_time = minn
         steady_metric['recovery_time_factor'] = minn
+
 
         # avaerage performance in later 1min or all time if recovery time is less than 1min
         performance_recovery = sum(original_txn_stat[fault_start+recovery_time: min(fault_start+recovery_time+60, period_end)])/ min(60, period_end - fault_start - recovery_time)

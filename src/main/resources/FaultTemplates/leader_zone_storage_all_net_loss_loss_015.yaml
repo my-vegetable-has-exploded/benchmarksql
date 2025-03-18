@@ -1,0 +1,4 @@
+duration: 120s
+injectpods: $zone.leader-storage-0
+loss: '15'
+template: net_loss.yaml
