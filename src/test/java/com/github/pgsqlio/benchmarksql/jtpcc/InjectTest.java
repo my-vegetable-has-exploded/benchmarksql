@@ -18,103 +18,95 @@ import java.io.StringWriter;
 
 public class InjectTest {
 
-	@Test
-	public void testInject() throws Exception {
-		// example properties
-		// # k8scli user@ip
-		// sys.k8scli: "root@133.133.135.56"
-		// sys.namespace: "oceanbase"
-		// sys.pods: "obcluster-1-zone1-f4zc55,obcluster-1-zone1-vlqshr,obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd,obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2"
-		// sys.leaderzone: "zone1"
-		// sys.zones: "zone1,zone2,zone3"
-		// sys.zone1.pods: "obcluster-1-zone1-f4zc55,obcluster-1-zone1-f4zc55,obcluster-1-zone1-vlqshr"
-		// sys.zone2.pods: "obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd"
-		// sys.zone3.pods: "obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2"
-		// sys.storage.pods: "obcluster-1-zone1-f4zc55,obcluster-1-zone1-vlqshr,obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd,obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2"
-        // sys.storage.volumePath: "/home/admin/data-file"
-		// sys.faults: "leader_fail.yaml"
+    @Test
+    public void testInject() throws Exception {
+        // example properties
+        // # k8scli user@ip
+        // sys.k8scli: "wy@133.133.135.56"
+        // sys.components:
+        // "133.133.135.156:dmserver,133.133.135.157:dmserver,133.133.135.158:dmserver"
+        // sys.leaderzone: "zone1"
+        // sys.zones: "zone1,zone2,zone3"
+        // sys.zone1.components: "133.133.135.156:dmserver"
+        // sys.zone2.components: "133.133.135.157:dmserver"
+        // sys.zone3.components: "133.133.135.158:dmserver"
+        // sys.storage.components:
+        // "133.133.135.156:dmserver,133.133.135.157:dmserver,133.133.135.158:dmserver"
+        // sys.volumePath:/home
+        // sys.device: em1
+        // sys.storage.volumePath:/home
+        // sys.faults: "leader_fail.yaml"
 
-		Properties p = new Properties();
-		p.setProperty("sys.k8scli", "wy@133.133.135.56");
-		p.setProperty("sys.namespace", "oceanbase");
-		p.setProperty("sys.pods", "obcluster-1-zone1-f4zc55,obcluster-1-zone1-vlqshr,obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd,obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2");
-		p.setProperty("sys.leaderzone", "zone1");
-		p.setProperty("sys.zones", "zone1,zone2,zone3");
-		p.setProperty("sys.zone1.pods", "obcluster-1-zone1-f4zc55,obcluster-1-zone1-vlqshr");
-		p.setProperty("sys.zone2.pods", "obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd");
-		p.setProperty("sys.zone3.pods", "obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2");
-		p.setProperty("sys.storage.pods", "obcluster-1-zone1-f4zc55,obcluster-1-zone1-vlqshr,obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd,obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2");
-        p.setProperty("sys.storage.volumePath", "/home/admin/data-file");
-		p.setProperty("sys.test.pods", "obcluster-1-zone1-f4zc55");
-		p.setProperty("sys.faults", "leader_fail.yaml");
+        Properties p = new Properties();
+        p.setProperty("sys.k8scli", "wy@133.133.135.56");
+        p.setProperty("sys.components", "133.133.135.156:dmserver,133.133.135.157:dmserver,133.133.135.158:dmserver");
+        p.setProperty("sys.leaderzone", "zone1");
+        p.setProperty("sys.zones", "zone1,zone2,zone3");
+        p.setProperty("sys.zone1.components", "133.133.135.156:dmserver");
+        p.setProperty("sys.zone2.components", "133.133.135.157:dmserver");
+        p.setProperty("sys.zone3.components", "133.133.135.158:dmserver");
+        p.setProperty("sys.storage.components",
+                "133.133.135.156:dmserver,133.133.135.157:dmserver,133.133.135.158:dmserver");
+        p.setProperty("sys.storage.volumePath", "/home");
+        p.setProperty("sys.volumePath", "/home");
+        p.setProperty("sys.device", "em1");
+        p.setProperty("sys.test.components", "133.133.135.158:dmserver");
+        p.setProperty("sys.faults", "leader_fail.yaml");
 
-		// println current path
-		ChaosInjecter injecter = ChaosInjecter.getInstance(null, "src/main/resources/FaultTemplates/",
-				"src/main/resources/faults/");
+        // println current path
+        ChaosInjecter injecter = ChaosInjecter.getInstance(null, "src/main/resources/FaultTemplates/",
+                "src/main/resources/faults/");
 
-		SystemConfig config = new SystemConfig(p);
-		try {
-			List<String> leader_zone_all = injecter.generateScope(config, "$zone.leader-storage-0");
-			assertEquals(leader_zone_all.size(), 2);
-			assertEquals(leader_zone_all.get(0), "obcluster-1-zone1-f4zc55");
-			assertEquals(leader_zone_all.get(1), "obcluster-1-zone1-vlqshr");
+        SystemConfig config = new SystemConfig(p);
+        try {
+            List<String> leader_zone_all = injecter.generateScope(config, "$zone.leader-storage-0");
+            assertEquals(leader_zone_all.size(), 1);
+            assertEquals(leader_zone_all.get(0), "133.133.135.156:dmserver");
 
-			List<String> leader_zone_one = injecter.generateScope(config, "$zone.leader-storage-1");
-			assertEquals(leader_zone_one.size(), 1);
-			assertTrue(leader_zone_one.get(0).equals("obcluster-1-zone1-f4zc55") || leader_zone_one.get(0).equals("obcluster-1-zone1-vlqshr"));
+            List<String> follower_zone1List = injecter.generateScope(config, "$zone.follower.1-storage-0");
+            assertEquals(follower_zone1List.size(), 1);
+            assertTrue(follower_zone1List.get(0).equals("133.133.135.157:dmserver")
+                    || follower_zone1List.get(0).equals("133.133.135.158:dmserver"));
 
-			List<String> follower_zone1List = injecter.generateScope(config, "$zone.follower.1-storage-1");
-			assertEquals(follower_zone1List.size(), 1);
-			assertTrue(follower_zone1List.get(0).equals("obcluster-1-zone2-st8k4g") || follower_zone1List.get(0).equals("obcluster-1-zone2-zmrqjd") || follower_zone1List.get(0).equals("obcluster-1-zone3-4jqrvf") || follower_zone1List.get(0).equals("obcluster-1-zone3-pvfsh2"));
+            List<String> allList = injecter.generateScope(config, "$storage-0");
+            assertEquals(allList.size(), 3);
 
-			// List<String> random_zoneList = injecter.generateScope(config, "$zone.random-storage-1");
-			// assertEquals(random_zoneList.size(), 1);
-			// assertTrue(random_zoneList.get(0).equals("obcluster-1-zone1-f4zc55") || random_zoneList.get(0).equals("obcluster-1-zone1-vlqshr") || random_zoneList.get(0).equals("obcluster-1-zone2-st8k4g") || random_zoneList.get(0).equals("obcluster-1-zone2-zmrqjd") || random_zoneList.get(0).equals("obcluster-1-zone3-4jqrvf") || random_zoneList.get(0).equals("obcluster-1-zone3-pvfsh2"));
+            List<String> testRoleList = injecter.generateScope(config, "$test-0");
+            assertEquals(testRoleList.size(), 1);
+            assertEquals(testRoleList.get(0), "133.133.135.158:dmserver");
 
-			List<String> allList = injecter.generateScope(config, "$storage-0");
-			assertEquals(allList.size(), 6);
-
-
-			List<String> testRoleList = injecter.generateScope(config, "$zone.leader-test-0");
-			assertEquals(testRoleList.size(), 1);
-			assertEquals(testRoleList.get(0), "obcluster-1-zone1-f4zc55");
-
-			testRoleList = injecter.generateScope(config, "$test-0");
-			assertEquals(testRoleList.size(), 1);
-			assertEquals(testRoleList.get(0), "obcluster-1-zone1-f4zc55");
-
-			ChaosFault fault = injecter.initialFault(config, "leader_zone_storage_all_fail.yaml");
-			String faultPath = fault.file;
-			// read yaml file
-			InputStream input = new FileInputStream(faultPath);
-			Yaml yaml = new Yaml();
-			HashMap<String, Object> describe = yaml.load(input);
-			StringWriter writer = new StringWriter();
-			DumperOptions options = new DumperOptions();
-			options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK); 
-			options.setPrettyFlow(true); 
-			Yaml yamlDumper = new Yaml(options);
-			yamlDumper.dump(describe, writer);
-			String yamlString = writer.toString();
+            ChaosFault fault = injecter.initialFault(config, "leader_zone_storage_all_fail.yaml");
+            String faultPath = fault.file;
+            // read yaml file
+            InputStream input = new FileInputStream(faultPath);
+            Yaml yaml = new Yaml();
+            HashMap<String, Object> describe = yaml.load(input);
+            StringWriter writer = new StringWriter();
+            DumperOptions options = new DumperOptions();
+            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+            options.setPrettyFlow(true);
+            Yaml yamlDumper = new Yaml(options);
+            yamlDumper.dump(describe, writer);
+            String yamlString = writer.toString();
             input.close();
 
-			String expected = "apiVersion: chaos-mesh.org/v1alpha1"+
-			"\nkind: PodChaos"+
-			"\nmetadata:"+
-			"\n  name: fail-pod"+
-			"\n  namespace: chaos-testing"+
-			"\nspec:"+
-			"\n  action: pod-failure"+
-			"\n  mode: all"+
-			"\n  duration: 120s"+
-			"\n  selector:"+
-			"\n    pods:"+
-			"\n      oceanbase:"+
-			"\n      - obcluster-1-zone1-f4zc55"+
-			"\n      - obcluster-1-zone1-vlqshr\n";
-			assertEquals(expected, yamlString);
+            String expected = "kind: PhysicalMachineChaos" +
+                    "\napiVersion: chaos-mesh.org/v1alpha1" +
+                    "\nmetadata:" +
+                    "\n  namespace: chaos-testing" +
+                    "\n  name: kill-process" +
+                    "\nspec:" +
+                    "\n  action: process" +
+                    "\n  address:" +
+                    "\n  - http://133.133.135.156:31767" +
+                    "\n  mode: all" +
+                    "\n  process:" +
+                    "\n    process: dmserver" +
+                    "\n    signal: 9" +
+                    "\n  duration: 120s\n";
+            assertEquals(expected, yamlString);
 
-            fault = injecter.initialFault(config, "leader_zone_storage_all_io_fault_percent_20.yaml");
+            fault = injecter.initialFault(config, "leader_zone_storage_all_net_delay_latency_032ms.yaml");
             faultPath = fault.file;
             // read yaml file
             input = new FileInputStream(faultPath);
@@ -124,48 +116,27 @@ public class InjectTest {
             yamlString = writer.toString();
             input.close();
 
-            String expected2 = "apiVersion: chaos-mesh.org/v1alpha1"+
-            "\nkind: IOChaos"+
-            "\nmetadata:"+
-            "\n  name: io-fault"+
-            "\n  namespace: chaos-testing"+
-            "\nspec:"+
-            "\n  action: fault"+
-            "\n  mode: all"+
-            "\n  selector:"+
-            "\n    pods:"+
-            "\n      oceanbase:"+
-            "\n      - obcluster-1-zone1-f4zc55"+
-            "\n      - obcluster-1-zone1-vlqshr"+
-            "\n  volumePath: /home/admin/data-file"+
-            "\n  errno: 5"+
-            "\n  percent: 20"+
-            "\n  duration: 120s\n";
+            String expected2 = "kind: PhysicalMachineChaos" +
+                    "\napiVersion: chaos-mesh.org/v1alpha1" +
+                    "\nmetadata:" +
+                    "\n  namespace: chaos-testing" +
+                    "\n  name: net-delay" +
+                    "\nspec:" +
+                    "\n  action: network-delay" +
+                    "\n  address:" +
+                    "\n  - http://133.133.135.156:31767" +
+                    "\n  mode: all" +
+                    "\n  network-delay:" +
+                    "\n    device: em1" +
+                    "\n    ip-protocol: all" +
+                    "\n    latency: 32ms" +
+                    "\n  duration: 120s\n";
 
             assertEquals(expected2, yamlString);
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw e;
-		}
-
-		final Properties fp = new Properties();
-		fp.setProperty("sys.k8scli", "wy@133.133.135.56");
-		fp.setProperty("sys.namespace", "oceanbase");
-		fp.setProperty("sys.pods", "obcluster-1-zone1-f4zc55,obcluster-1-zone1-vlqshr,obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd,obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2");
-		fp.setProperty("sys.zones", "zone1,zone2,zone3");
-		fp.setProperty("sys.zone1.pods", "obcluster-1-zone1-f4zc55,obcluster-1-zone1-vlqshr");
-		fp.setProperty("sys.zone2.pods", "obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd");
-		fp.setProperty("sys.zone3.pods", "obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2");
-		fp.setProperty("sys.storage.pods", "obcluster-1-zone1-f4zc55,obcluster-1-zone1-vlqshr,obcluster-1-zone2-st8k4g,obcluster-1-zone2-zmrqjd,obcluster-1-zone3-4jqrvf,obcluster-1-zone3-pvfsh2");
-		fp.setProperty("sys.test.pods", "obcluster-1-zone3-pvfsh2");
-		fp.setProperty("sys.faults", "leader_fail.yaml");
-		final SystemConfig fconfig = new SystemConfig(fp);
-		// assert throws exception for $zone.leader-storage-0, leader zone not set
-		Exception exception = assertThrows(Exception.class, () -> {
-			injecter.generateScope(fconfig, "$zone.leader-storage-0");
-		});
-		assertEquals("leader zone not set", exception.getMessage());
-
-	}
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
 }

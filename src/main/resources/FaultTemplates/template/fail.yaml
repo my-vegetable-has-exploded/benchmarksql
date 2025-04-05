@@ -1,10 +1,14 @@
+kind: PhysicalMachineChaos
 apiVersion: chaos-mesh.org/v1alpha1
-kind: PodChaos
-metadata: {name: fail-pod, namespace: chaos-testing}
+metadata:
+  namespace: chaos-testing
+  name: kill-process
 spec:
-  action: pod-failure
+  action: process
+  address: '$INJECTIPS'
+    # - http://133.133.135.157:31767
   mode: all
+  process:
+    process: '$PROCESS'
+    signal: 9
   duration: '$DURATION'
-  selector:
-    pods:
-      $NAMESPACE: '$INJECTPODS'

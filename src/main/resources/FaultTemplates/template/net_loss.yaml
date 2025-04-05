@@ -1,14 +1,14 @@
+kind: PhysicalMachineChaos
 apiVersion: chaos-mesh.org/v1alpha1
-kind: NetworkChaos
 metadata:
-  name: net-loss
   namespace: chaos-testing
+  name: net-loss
 spec:
-  action: loss
+  action: network-loss
+  address: '$INJECTIPS'
   mode: all
-  selector:
-    pods:
-      $NAMESPACE: '$INJECTPODS'
-  loss:
-    loss: '$LOSS'
+  network-loss:
+    device: '$DEVICE'
+    ip-protocol: all
+    percent: '$LOSS'
   duration: '$DURATION'

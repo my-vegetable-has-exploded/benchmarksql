@@ -1,15 +1,13 @@
+kind: PhysicalMachineChaos
 apiVersion: chaos-mesh.org/v1alpha1
-kind: StressChaos
 metadata:
-  name: cpu-stress
   namespace: chaos-testing
+  name: cpu-stress
 spec:
   mode: all
-  selector:
-    pods:
-      $NAMESPACE: '$INJECTPODS'
-  stressors:
-    cpu:
-      workers: '$WORKERS'
-      load: '$LOAD'
+  action: stress-cpu
+  address: '$INJECTIPS'
+  stress-cpu:
+    load: '$LOAD'
+    workers: '$WORKERS'
   duration: '$DURATION'

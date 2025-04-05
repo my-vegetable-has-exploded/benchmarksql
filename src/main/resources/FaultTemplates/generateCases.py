@@ -1,16 +1,24 @@
 import yaml
 
-# 定义故障类型及其参数
+# # 定义故障类型及其参数
+# FAULT_TYPES = {
+#     "fail": {"template": "fail.yaml", "params": {}},
+#     "io_fault": {"template": "io_fault.yaml", "params": {"percent": [100, 80, 50, 20, 10]}},
+#     "net_delay": {"template": "net_delay.yaml", "params": {"latency": ["1ms", "4ms", "8ms", "16ms", "32ms"]}},
+#     "net_loss": {"template": "net_loss.yaml", "params": {"loss": ["5", "10", "15", "20"]}},
+#     "cpu_stress": {"template": "cpu_stress.yaml", "params": {"load": [50, 100]}},
+# }
+
 FAULT_TYPES = {
     "fail": {"template": "fail.yaml", "params": {}},
-    "io_fault": {"template": "io_fault.yaml", "params": {"percent": [100, 80, 50, 20, 10]}},
-    "net_delay": {"template": "net_delay.yaml", "params": {"latency": ["1ms", "4ms", "8ms", "16ms", "32ms"]}},
-    "net_loss": {"template": "net_loss.yaml", "params": {"loss": ["5", "10", "15", "20"]}},
-    "cpu_stress": {"template": "cpu_stress.yaml", "params": {"load": [50, 100]}},
+    "io_fault": {"template": "io_fault.yaml", "params": {}},
+    "net_delay": {"template": "net_delay.yaml", "params": {"latency": ["32ms"]}},
+    "net_loss": {"template": "net_loss.yaml", "params": {"loss": ["100"]}},
+    "cpu_stress": {"template": "cpu_stress.yaml", "params": {"load": [100]}},
 }
 
 # 定义故障位置生成函数
-def generate_injectpods(zone_type, role, pod_count):
+def generate_injectips(zone_type, role, pod_count):
     if zone_type == "leader":
         return f"$zone.leader-{role}-{pod_count}"
     elif zone_type == "follower":
@@ -70,11 +78,11 @@ def is_abnormal(zone_type, role, pod_count, fault_type, fault_params):
 
 # 生成配置文件
 def generate_config_file(zone_type, role, pod_count, fault_type, duration, fault_params):
-    injectpods = generate_injectpods(zone_type, role, pod_count)
+    injectips = generate_injectips(zone_type, role, pod_count)
     fault_config = FAULT_TYPES[fault_type]
     config = {
         "template": fault_config["template"],
-        "injectpods": injectpods,
+        "injectips": injectips,
         "duration": f"{duration}s"
     }
 
@@ -83,7 +91,10 @@ def generate_config_file(zone_type, role, pod_count, fault_type, duration, fault
         config["volumePath"] = "$" + role + ".volumePath"
 
     if fault_type == "cpu_stress":
-        config["workers"] = 2
+        config["workers"] = 20
+
+    if fault_type == "fail":
+        config["process"] = "$process" 
     
     # 添加故障类型特定的参数
     for param, value in fault_params.items():
@@ -125,7 +136,7 @@ if __name__ == "__main__":
     zone_types = ["leader", "random"]  # 添加空字符串表示不指定zone
     # roles = ["storage", "compute", "metadata"]
     roles = ["storage", "compute"]
-    pod_counts = [0, 1]
+    pod_counts = [0] # 0表示对所有节点注入故障，i表示对i个节点注入故障
     # fault_types = ["cpu_stress"]
     fault_types = ["fail", "io_fault", "net_delay", "net_loss", "cpu_stress"]
     duration = 120  # 持续时间，单位为秒

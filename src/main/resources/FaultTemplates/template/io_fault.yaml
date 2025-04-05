@@ -1,16 +1,14 @@
+kind: PhysicalMachineChaos
 apiVersion: chaos-mesh.org/v1alpha1
-kind: IOChaos
 metadata:
-  name: io-fault
   namespace: chaos-testing
+  name: io-fault
 spec:
-  action: fault
+  action: disk-fill
+  address: '$INJECTIPS'
   mode: all
-  selector:
-    pods:
-      $NAMESPACE: '$INJECTPODS'
-  # TODO: split volumepath of compute and storage
-  volumePath: '$VOLUMEPATH'
-  errno: 5
-  percent: '$PERCENT'
+  disk-fill:
+    size: 10241G
+    path: '$VOLUMEPATH'
+    fill-by-fallocate: false
   duration: '$DURATION'

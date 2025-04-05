@@ -1,3 +1,4 @@
 duration: 120s
-injectpods: $zone.leader-storage-0
+injectips: $zone.leader-storage-0
+process: $process
 template: fail.yaml

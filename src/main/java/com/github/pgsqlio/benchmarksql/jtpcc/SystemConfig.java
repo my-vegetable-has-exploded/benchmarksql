@@ -13,10 +13,10 @@ public class SystemConfig {
 	public Properties p;
 	public String k8scli;
 	public String namespace;
-	public ArrayList<String> pods = new ArrayList<String>();
+	public ArrayList<String> components = new ArrayList<String>();
 	public String leaderzone;
 	public ArrayList<String> zones = new ArrayList<String>();
-	public HashMap<String, ArrayList<String>> zonePods = new HashMap<String, ArrayList<String>>();
+	public HashMap<String, ArrayList<String>> zoneComponents = new HashMap<String, ArrayList<String>>();
 	public ArrayList<String> faults = new ArrayList<String>();
 	public String volumePath;
 	public HashMap<String, ArrayList<String>> scopesCache = new HashMap<String, ArrayList<String>>();
@@ -46,23 +46,23 @@ public class SystemConfig {
 		this.p = p;
 		// get the properties
 		k8scli = getProp(p, "sys.k8scli");
-		namespace = getProp(p, "sys.namespace");
+		// namespace = getProp(p, "sys.namespace");
 		volumePath = getProp(p, "sys.volumePath");
-		String podsStr = getProp(p, "sys.pods");
-		for (String pod : podsStr.split(",")) {
-			pods.add(pod.strip());
+		String componentsStr = getProp(p, "sys.components");
+		for (String component : componentsStr.split(",")) {
+			components.add(component.strip());
 		}
 		String zonesStr = getProp(p, "sys.zones");
 		if (zonesStr != null) {
 			for (String zone : zonesStr.split(",")) {
 				zones.add(zone.strip());
-				String podsInZoneString = getProp(p, "sys." + zone.strip() + ".pods");
-				logger.info("system config, {}.pods={}", zone.strip(), podsInZoneString);
-				ArrayList<String> podsInZone = new ArrayList<String>();
-				for (String pod : podsInZoneString.split(",")) {
-					podsInZone.add(pod.strip());
+				String componentsInZoneString = getProp(p, "sys." + zone.strip() + ".components");
+				logger.info("system config, {}.components={}", zone.strip(), componentsInZoneString);
+				ArrayList<String> componentsInZone = new ArrayList<String>();
+				for (String component  : componentsInZoneString.split(",")) {
+					componentsInZone.add(component.strip());
 				}
-				zonePods.put(zone.strip(), podsInZone);
+				zoneComponents.put(zone.strip(), componentsInZone);
 			}
 		}
 		leaderzone = getProp(p, "sys.leaderzone");

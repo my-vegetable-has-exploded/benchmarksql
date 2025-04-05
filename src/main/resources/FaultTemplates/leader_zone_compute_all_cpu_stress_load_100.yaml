@@ -1,5 +1,5 @@
 duration: 120s
-injectpods: $zone.leader-compute-0
+injectips: $zone.leader-compute-0
 load: 100
 template: cpu_stress.yaml
-workers: 2
+workers: 20

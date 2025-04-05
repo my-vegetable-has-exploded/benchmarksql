@@ -136,7 +136,7 @@ public class ChaosInjecter {
 			if (replacement1 != null) {
 				return replacement1;
 			}
-			// map $PODNAME to podname
+			// map $componentNAME to componentname
 			Object replacement2 = caseInsensitiveReplacements.get(value.substring(1));
 			if (replacement2 != null) {
 				return replacement2;
@@ -146,19 +146,19 @@ public class ChaosInjecter {
 	}
 
 	public List<String> generateScope(SystemConfig config, String placeholder) throws Exception {
-		// Scope placeholder need to replace by list of pods,
+		// Scope placeholder need to replace by list of components,
 		// scope placeholder constraints are connect by '-',
 		// constraint describe the fault inject scope,
-		// for example, zone describe pods position of zone,
-		// zone.leader means pods need to be in leader zone,
-		// zone.follower.1 means pods need to be in follower1 zone.
+		// for example, zone describe components position of zone,
+		// zone.leader means components need to be in leader zone,
+		// zone.follower.1 means components need to be in follower1 zone.
 		// zone.random.1 means any random zone, zone.random2 means any one random zones
 		// but different from zone.random1.
 		// the second last constraint is the role, there is storage and compute, default
-		// the last constraint is the pod list number, for example, 1 means only one
-		// pod, 0 means all pods satisfy the constraints.
+		// the last constraint is the component list number, for example, 1 means only one
+		// component, 0 means all components satisfy the constraints.
 		String[] constraints = placeholder.substring(1).split("-");
-		ArrayList<String> pods = new ArrayList<>(config.pods);
+		ArrayList<String> components = new ArrayList<>(config.components);
 		ArrayList<String> zones = null;
 		// zone constraints
 		String constraint0 = constraints[0];
@@ -212,27 +212,27 @@ public class ChaosInjecter {
 			} else {
 				zone = (String) zones.get(0);
 			}
-			pods = new ArrayList<String>(config.zonePods.get(zone));
+			components = new ArrayList<String>(config.zoneComponents.get(zone));
 		}
 
 		// role constraints
 		String roleConstraint = constraints[constraints.length - 2];
 		if (roleConstraint.equals("storage") || roleConstraint.equals("compute") || roleConstraint.equals("test")) {
-			String rolepodsStr = config.getProp(config.p, "sys." + roleConstraint + ".pods");
-			if (rolepodsStr == null) {
+			String rolecomponentsStr = config.getProp(config.p, "sys." + roleConstraint + ".components");
+			if (rolecomponentsStr == null) {
 				throw new Exception("role " + roleConstraint + " not set");
 			}
-			ArrayList<String> rolepods = new ArrayList<String>();
-			for (String rolepod : rolepodsStr.split(",")) {
-				rolepods.add(rolepod.strip());
+			ArrayList<String> rolecomponents = new ArrayList<String>();
+			for (String rolecomponent : rolecomponentsStr.split(",")) {
+				rolecomponents.add(rolecomponent.strip());
 			}
-			// check if pods in rolepods
-			Iterator<String> iterator = pods.iterator();
+			// check if components in rolecomponents
+			Iterator<String> iterator = components.iterator();
 			while (iterator.hasNext()) {
-				String pod = iterator.next();
-				// System.out.println("pod: " + pod);
-				if (!rolepods.contains(pod)) {
-					// System.out.println("pod: " + pod + " not in rolepods");
+				String component = iterator.next();
+				// System.out.println("component: " + component);
+				if (!rolecomponents.contains(component)) {
+					// System.out.println("component: " + component + " not in rolecomponents");
 					iterator.remove(); // 使用迭代器的 remove 方法
 				}
 			}
@@ -240,8 +240,8 @@ public class ChaosInjecter {
 			throw new Exception("invalid role constraint: " + roleConstraint);
 		}
 
-		if (pods.size() == 0) {
-			throw new Exception("no pods satisfy the constraints");
+		if (components.size() == 0) {
+			throw new Exception("no components satisfy the constraints");
 		}
 
 		// number constraints
@@ -249,11 +249,11 @@ public class ChaosInjecter {
 		if (numberConstraint.matches("\\d+")) {
 			int n = Integer.parseInt(numberConstraint);
 			if (n == 0) {
-				return pods;
+				return components;
 			} else {
-				pods = new ArrayList<String>(pods);
-				java.util.Collections.shuffle(pods, new java.util.Random());
-				return pods.subList(0, n);
+				components = new ArrayList<String>(components);
+				java.util.Collections.shuffle(components, new java.util.Random());
+				return components.subList(0, n);
 			}
 		} else {
 			throw new Exception("invalid number constraint: " + numberConstraint);
@@ -264,9 +264,20 @@ public class ChaosInjecter {
 			throws Exception {
 		HashMap<String, Object> replacements = new HashMap<String, Object>();
 		for (String placeholder : placeholders) {
+            // generate ips or components
 			if (placeholder.contains("-")) {
-				List<String> scope = generateScope(config, placeholder);
-				replacements.put(placeholder, scope);
+				ArrayList<String> scope = (ArrayList<String>) generateScope(config, placeholder);
+                ArrayList<Component> components = new ArrayList<Component>();
+                ArrayList<String> chaosdList = new ArrayList<String>();
+                for (String comp: scope) {
+                    Component component = new Component(comp);
+                    components.add(component);
+                    // convert ip to chaosd server http address
+                    chaosdList.add("http://" + component.ip + ":31767");         
+                }
+                // use first component's process as process
+                replacements.put("$process", components.get(0).process);
+				replacements.put(placeholder, chaosdList);
 			}
 		}
 		// extend replacements systemconfig with config.confs

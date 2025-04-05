@@ -1,4 +1,0 @@
-duration: 120s
-injectpods: $zone.leader-compute-0
-latency: 8ms
-template: net_delay.yaml

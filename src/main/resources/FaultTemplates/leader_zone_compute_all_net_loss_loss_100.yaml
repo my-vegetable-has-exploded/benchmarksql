@@ -1,4 +1,4 @@
 duration: 120s
 injectips: $zone.leader-compute-0
-process: $process
-template: fail.yaml
+loss: '100'
+template: net_loss.yaml

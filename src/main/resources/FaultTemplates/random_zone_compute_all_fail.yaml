@@ -1,3 +1,4 @@
 duration: 120s
-injectpods: $zone.random-compute-0
+injectips: $zone.random-compute-0
+process: $process
 template: fail.yaml

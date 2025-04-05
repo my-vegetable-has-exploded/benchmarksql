@@ -1,9 +1,9 @@
 kind: PhysicalMachineChaos
 apiVersion: chaos-mesh.org/v1alpha1
-metadata: {namespace: chaos-testing, name: kill-process}
+metadata: {namespace: chaos-testing, name: net-delay}
 spec:
-  action: process
+  action: network-delay
   address: ['http://133.133.135.156:31767']
   mode: all
-  process: {process: dmserver, signal: 9}
+  network-delay: {device: em1, ip-protocol: all, latency: 32ms}
   duration: 120s

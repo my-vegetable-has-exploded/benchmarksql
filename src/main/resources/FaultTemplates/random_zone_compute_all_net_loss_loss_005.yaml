@@ -1,4 +1,0 @@
-duration: 120s
-injectpods: $zone.random-compute-0
-loss: '5'
-template: net_loss.yaml
