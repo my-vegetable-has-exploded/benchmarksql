@@ -238,6 +238,8 @@ public class jTPCC {
 	  dbType = jTPCCConfig.DB_TiDB;
     else if (iDBType.equals("polardb"))
       dbType = jTPCCConfig.DB_POLARDB; 
+    else if (iDBType.equals("dameng"))
+      dbType = jTPCCConfig.DB_DAMENG;
     else {
       log.error("Unknown database type '{}'", iDBType);
       return;

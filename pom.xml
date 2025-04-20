@@ -52,6 +52,12 @@
 			<version>21.1.0.0</version>
 		</dependency>
 
+        <dependency>
+            <groupId>com.dameng</groupId>
+            <artifactId>DmJdbcDriver18</artifactId>
+            <version>8.1.2.79</version>
+        </dependency>
+
 		<!-- Microsoft SQL Server driver -->
 		<!-- Depending the Java version, it could use a different version. -->
 		<dependency>

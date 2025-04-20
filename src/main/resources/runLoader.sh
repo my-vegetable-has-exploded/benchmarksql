@@ -11,6 +11,6 @@ shift
 setCP || exit 1
 
 myOPTS="-Dprop=${PROPS}"
-myOPTS="${myOPTS} -Djava.security.egd=file:/dev/./urandom"
+myOPTS="${myOPTS} -Djava.security.egd=file:/dev/./urandom -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
 
 java -cp "$myCP" $myOPTS com.github.pgsqlio.benchmarksql.loader.LoadData $*
