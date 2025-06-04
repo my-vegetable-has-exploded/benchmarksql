@@ -28,6 +28,12 @@
 			<version>2.14.1</version>
 		</dependency>
 
+        <dependency>
+             <groupId>org.json</groupId>
+             <artifactId>json</artifactId>
+            <version>20231013</version>
+        </dependency>
+
 		<!-- Postgres driver -->
 		<!-- Depending the Java version, it could use a different version. -->
 		<dependency>
