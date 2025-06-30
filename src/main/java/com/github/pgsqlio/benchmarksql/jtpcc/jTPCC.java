@@ -17,6 +17,7 @@ import java.util.Calendar;
 import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
@@ -88,7 +89,9 @@ public class jTPCC {
   static public jTPCCScheduler scheduler;
   public jTPCCSUT systemUnderTest;
   public jTPCCMonkey monkeys;
+
   public SystemConfig sysConfig;
+  PerformConfig performConfig;
 
   public static String resultDirectory = null;
   public static String osCollectorScript = null;
@@ -119,30 +122,11 @@ public class jTPCC {
     return (prop);
   }
 
-  private String getProp(Properties p, String pName, String defVal) {
-    String prop = p.getProperty(pName);
-    if (prop == null)
-      prop = defVal;
-    log.info("main, {}={}", pName, prop);
-    return (prop);
-  }
-
   boolean useYaml = false;
   private HashMap<String, Object> yamlMap;
   private Properties ini;
 
-  String getVal(String key, String defVal) {
-    if (useYaml) {
-      Object val = yamlMap.get(key);
-      String result = val != null ? val.toString() : defVal;
-      log.info("main, {}={}", key, result);
-      return result;
-    } else {
-      return getProp(ini, key, defVal);
-    }
-  }
-
-  String getVal(String key) {
+  String getSysVal(String key) {
     if (useYaml) {
       Object val = yamlMap.get(key);
       String result = val != null ? val.toString() : null;
@@ -153,13 +137,39 @@ public class jTPCC {
     }
   }
 
-    HashMap<String, Object> getFaultInfoMap() {
+  HashMap<String, Object> getFaultInfoMapWithSpecifiedFields(HashMap<String, Object> nYamlMap) {
+    String[] faultFieldArray = {"duration", "injectpods", "load", "template", "workers", "loss", "percent", "volumePath"};
+    Set<String> faultFieldSet = new java.util.HashSet<String>(java.util.Arrays.asList(faultFieldArray));
     HashMap<String, Object> faultInfoMap = new HashMap<String, Object>();
-    for (String key : yamlMap.keySet()) {
-      String valStr = getVal(key);
+    for (String key : nYamlMap.keySet()) {
+      Object valObj = nYamlMap.get(key);
+      String valStr = valObj != null ? valObj.toString() : null;
+      if (faultFieldSet.contains(key)) {
+        log.info("main, faultInfoMap, {}={}", key, valStr);
+        faultInfoMap.put(key, valStr);
+      }
+    }
+    return faultInfoMap;
+  }
+
+  HashMap<String, Object> getFaultInfoMapWithPrefix(HashMap<String, Object> nYamlMap) {
+    HashMap<String, Object> faultInfoMap = new HashMap<String, Object>();
+    for (String key : nYamlMap.keySet()) {
+      Object valObj = nYamlMap.get(key);
+      String valStr = valObj != null ? valObj.toString() : null;
       if (key.startsWith("fault.")) {
+        log.info("main, faultInfoMap, {}={}", key, valStr);
         faultInfoMap.put(key.substring(6), valStr);
       }
+    }
+    return faultInfoMap;
+  }
+
+  HashMap<String, Object> getFaultInfoMap(HashMap<String, Object> nYamlMap) {
+    HashMap<String, Object> faultInfoMap = new HashMap<String, Object>();
+    faultInfoMap = getFaultInfoMapWithPrefix(nYamlMap);
+    if (faultInfoMap.isEmpty()) {
+      faultInfoMap = getFaultInfoMapWithSpecifiedFields(nYamlMap);
     }
     return faultInfoMap;
   }
@@ -173,10 +183,11 @@ public class jTPCC {
     if (propStr.endsWith(".yaml")) {
       useYaml = true;
       log.info("main, loading properties from yaml file: {}", propStr);
-      InputStream faultTemplate = new FileInputStream(propStr);
+      InputStream propInputStream = new FileInputStream(propStr);
       Yaml yaml = new Yaml();
-      yamlMap = yaml.load(faultTemplate);
+      yamlMap = yaml.load(propInputStream);
       sysConfig = new SystemConfig(yamlMap);
+      performConfig = new PerformConfig(yamlMap);
     } else if (propStr.endsWith(".properties")) {
       // load the ini file
       ini = new Properties();
@@ -186,6 +197,7 @@ public class jTPCC {
         log.error("main, could not load properties file");
       }
       sysConfig = new SystemConfig(ini);
+      performConfig = new PerformConfig(ini);
     } else {
       throw new IllegalArgumentException("Invalid property arguments: " + propStr);
     }
@@ -194,12 +206,13 @@ public class jTPCC {
 	try {
       ChaosInjecter injecter = ChaosInjecter.getInstance(this);
       for (String fault : sysConfig.faults) {
-        if (useYaml) {
-          HashMap<String, Object> faultInfoMap = getFaultInfoMap();
-          injecter.initialFaultWithCombinedConfig(sysConfig, fault, faultInfoMap);
-        } else {
-          injecter.initialFault(sysConfig, fault);
-        }
+        String faultTemplatePath = injecter.getFaultTemplatesWithName(fault);
+        Yaml yaml = new Yaml();
+        InputStream faultTemplate = new FileInputStream(faultTemplatePath);
+        HashMap<String, Object> allParamsMap = yaml.load(faultTemplate);
+        performConfig.updatePerformConfigWithYamlMap(allParamsMap);
+        HashMap<String, Object> faultInfoMap = getFaultInfoMap(allParamsMap);
+        injecter.initialFaultWithCombinedConfig(sysConfig, fault, faultInfoMap);
       }
     } catch (Exception e) {
       log.error("main, could not init fault file, " + e.getMessage());
@@ -219,17 +232,17 @@ public class jTPCC {
     log.info("main,  (c) 2016-2023, Jan Wieck");
     log.info("main, +-------------------------------------------------------------+");
     log.info("main, ");
-    String iDBType = getVal("db");
-    String iDriver = getVal("driver");
-    applicationName = getVal("application");
-    iConn = getVal("conn");
-    iUser = getVal("user");
-    iPassword = getVal("password");
+    String iDBType = getSysVal("db");
+    String iDriver = getSysVal("driver");
+    applicationName = getSysVal("application");
+    iConn = getSysVal("conn");
+    iUser = getSysVal("user");
+    iPassword = getSysVal("password");
 
     log.info("main, ");
-    numWarehouses = Integer.parseInt(getVal( "warehouses"));
-    useWarehouseFrom = Integer.parseInt(getVal("useWarehouseFrom", "-1"));
-    useWarehouseTo = Integer.parseInt(getVal("useWarehouseTo", "-1"));
+    numWarehouses = performConfig.numWarehouses;
+    useWarehouseFrom = performConfig.useWarehouseFrom;
+    useWarehouseTo = performConfig.useWarehouseTo;
     useWarehouses = numWarehouses;
     if (useWarehouseFrom > 0 && useWarehouseTo > 0) {
       useWarehouses = useWarehouseTo - useWarehouseFrom + 1;
@@ -238,27 +251,27 @@ public class jTPCC {
       useWarehouseTo = useWarehouses;
     }
 
-    numMonkeys = Integer.parseInt(getVal("monkeys", "8"));
-    numSUTThreads = Integer.parseInt(getVal("sutThreads", "32"));
-    maxDeliveryBGThreads = Integer.parseInt(getVal("maxDeliveryBGThreads", "0"));
-    maxDeliveryBGPerWH = Integer.parseInt(getVal("maxDeliveryBGPerWarehouse", "0"));
-    rampupMins = Integer.parseInt(getVal("rampupMins", "1"));
-    runMins = Integer.parseInt(getVal("runMins"));
-    rampupSUTMins = Integer.parseInt(getVal("rampupSUTMins", "1"));
-    rampupTerminalMins = Integer.parseInt(getVal("rampupTerminalMins", "0"));
-    reportIntervalSecs = Integer.parseInt(getVal("reportIntervalSecs", "1"));
-    resultIntervalSecs = Integer.parseInt(getVal("resultIntervalSecs", "1"));
-    restartSUTThreadProb = Double.parseDouble(getVal("restartSUTThreadProbability", "0"));
-    keyingTimeMultiplier = Double.parseDouble(getVal("keyingTimeMultiplier", "0.1"));
-    thinkTimeMultiplier = Double.parseDouble(getVal("thinkTimeMultiplier", "0.1"));
-    terminalMultiplier = Integer.parseInt(getVal("terminalMultiplier", "1"));
-    traceTerminalIO = Boolean.parseBoolean(getVal("traceTerminalIO", "false"));
+    numMonkeys = performConfig.numMonkeys;
+    numSUTThreads = performConfig.numSUTThreads;
+    maxDeliveryBGThreads = performConfig.maxDeliveryBGThreads;
+    maxDeliveryBGPerWH = performConfig.maxDeliveryBGPerWH;
+    rampupMins = performConfig.rampupMins;
+    runMins = performConfig.runMins;
+    rampupSUTMins = performConfig.rampupSUTMins;
+    rampupTerminalMins = performConfig.rampupTerminalMins;
+    reportIntervalSecs = performConfig.reportIntervalSecs;
+    resultIntervalSecs = performConfig.resultIntervalSecs;
+    restartSUTThreadProb = performConfig.restartSUTThreadProb;
+    keyingTimeMultiplier = performConfig.keyingTimeMultiplier;
+    thinkTimeMultiplier = performConfig.thinkTimeMultiplier;
+    terminalMultiplier = performConfig.terminalMultiplier;
+    traceTerminalIO = performConfig.traceTerminalIO;
     log.info("main, ");
-    paymentWeight = Double.parseDouble(getVal("paymentWeight", "0"));
-    orderStatusWeight = Double.parseDouble(getVal("orderStatusWeight", "0"));
-    deliveryWeight = Double.parseDouble(getVal("deliveryWeight", "0"));
-    stockLevelWeight = Double.parseDouble(getVal("stockLevelWeight", "0"));
-    storeWeight = Double.parseDouble(getVal("storeWeight", "0"));
+    paymentWeight = performConfig.paymentWeight;
+    orderStatusWeight = performConfig.orderStatusWeight;
+    deliveryWeight = performConfig.deliveryWeight;
+    stockLevelWeight = performConfig.stockLevelWeight;
+    storeWeight = performConfig.storeWeight;
     newOrderWeight = 100.0 - paymentWeight - orderStatusWeight - deliveryWeight - stockLevelWeight - storeWeight;
     if (newOrderWeight < 0.0) {
       log.error("main, newOrderWeight is below zero");
@@ -268,7 +281,7 @@ public class jTPCC {
     log.info("main, {}", sb.toString());
     log.info("main, ");
 
-    rollbackPercent = Double.parseDouble(getVal("rollbackPercent", "0"));
+    rollbackPercent = performConfig.rollbackPercent;
     log.info("main, ");
 
     numTerms = 10 * terminalMultiplier;
@@ -315,6 +328,8 @@ public class jTPCC {
       log.error("main, {}", ex.getMessage());
       return;
     }
+
+    System.exit(1);
 
     /*
      * Get the load configuration from the database and clear bmsql_txnlog table
@@ -386,8 +401,8 @@ public class jTPCC {
     /*
      * Launch the OS metric collector if configured
      */
-    String resultDirectory = getVal("resultDirectory");
-    String osCollectorScript = getVal("osCollectorScript");
+    String resultDirectory = getSysVal("resultDirectory");
+    String osCollectorScript = getSysVal("osCollectorScript");
 
     if (resultDirectory != null) {
       StringBuffer sbRes = new StringBuffer();
@@ -531,7 +546,7 @@ public class jTPCC {
       // Launch the metric collector script if configured
       if (osCollectorScript != null) {
         try {
-          osCollector = new OSCollector(getVal("osCollectorScript"),
+          osCollector = new OSCollector(getSysVal("osCollectorScript"),
               resultDataDir);
         } catch (IOException e) {
           log.error(e.getMessage());
@@ -548,7 +563,7 @@ public class jTPCC {
      * command line), we consume the property so that it is reported
      * in the logs.
      */
-    String reportScript = getVal("reportScript");
+    String reportScript = getSysVal("reportScript");
 
     /* Initialize the random number generator and report C values. */
     rnd = new jTPCCRandom(loadNuRandCLast);

@@ -30,12 +30,6 @@ public class ChaosInjecter {
 	private final String faultPath;
 	ChaosClient client = new ChaosClient();
 
-	private ChaosInjecter(jTPCC gdata) {
-		this.gdata = gdata;
-		this.templatePath = "./FaultTemplates/";
-		this.faultPath = "./faults/";
-	}
-
 	private ChaosInjecter(jTPCC gdata, String templatePath, String faultPath) {
 		this.gdata = gdata;
 		this.templatePath = templatePath;
@@ -46,7 +40,7 @@ public class ChaosInjecter {
 		if (instance == null) {
 			synchronized (ChaosInjecter.class) {
 				if (instance == null) {
-					instance = new ChaosInjecter(gdata);
+					instance = new ChaosInjecter(gdata, "./FaultTemplates/", "./faults/");
 				}
 			}
 		}
@@ -367,6 +361,11 @@ public class ChaosInjecter {
 	public ChaosFault initialFaultWithCombinedConfig(SystemConfig config, String faultName, HashMap<String, Object> fault) throws Exception {
 		Yaml yaml = new Yaml();
 		return instantiateFault(config, faultName, yaml, fault);
+	}
+
+	public String getFaultTemplatesWithName(String faultName) {
+		String faultTemplateFile = templatePath + faultName;
+		return faultTemplateFile;
 	}
 
 	public void inject() throws Exception {

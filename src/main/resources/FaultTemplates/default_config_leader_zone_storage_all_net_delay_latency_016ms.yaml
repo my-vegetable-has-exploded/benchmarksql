@@ -1,0 +1,33 @@
+fault.duration: 120s
+fault.injectpods: $zone.leader-compute-0
+fault.latency: 16ms
+fault.template: net_delay.yaml
+
+sys.faulttime: 1
+
+# Scaling and timing configuration
+warehouses: 100
+loadWorkers: 16
+monkeys: 8
+sutThreads: 32
+maxDeliveryBGThreads: 0
+maxDeliveryBGPerWarehouse: 0
+rampupMins: 2
+rampupSUTMins: 1
+rampupTerminalMins: 0
+runMins: 3
+reportIntervalSecs: 1
+restartSUTThreadProbability: 0.0
+keyingTimeMultiplier: 1
+thinkTimeMultiplier: 1
+traceTerminalIO: false
+
+# Below are the definitions for the "attempted" transaction mix.
+paymentWeight: 0.0
+orderStatusWeight: 0.0
+deliveryWeight: 0.0
+stockLevelWeight: 0.0
+storeWeight: 0.0
+
+# The TPC-C require a minimum of 1% of the NEW_ORDER transactions to roll back due to a user entry error (non existing item number). Doing it with a strict 1/100th probability can lead to undershooting this target, so we default to 1.01% to be sure.
+rollbackPercent: 0.0
