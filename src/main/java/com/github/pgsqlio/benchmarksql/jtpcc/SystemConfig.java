@@ -1,16 +1,16 @@
 package com.github.pgsqlio.benchmarksql.jtpcc;
 
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Properties;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import java.util.Properties;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Enumeration;
 
 public class SystemConfig {
 	private static Logger logger = LogManager.getLogger(SystemConfig.class);
 
-	public Properties p;
 	public String k8scli;
 	public String namespace;
 	public ArrayList<String> pods = new ArrayList<String>();
@@ -23,6 +23,10 @@ public class SystemConfig {
 	// in mins
 	public int faultTime;
 	public HashMap<String, String> confs = new HashMap<>();
+
+	public String storagePods;
+	public String computePods;
+	public String testPods;
 
 	public String getProp(Properties p, String pName) {
 		String prop = p.getProperty(pName);
@@ -43,7 +47,6 @@ public class SystemConfig {
 	}
 
 	public SystemConfig(Properties p) {
-		this.p = p;
 		// get the properties
 		k8scli = getProp(p, "sys.k8scli");
 		namespace = getProp(p, "sys.namespace");
@@ -86,5 +89,19 @@ public class SystemConfig {
 				logger.info("system config, {}={}", key.substring(4), value);
 			}
 		}
+
+		storagePods = getProp(p, "sys.storage.pods");
+		if (storagePods != null) {
+			storagePods = storagePods.strip();
+		}
+		computePods = getProp(p, "sys.compute.pods");
+		if (computePods != null) {
+			computePods = computePods.strip();
+		}
+		testPods = getProp(p, "sys.test.pods");
+		if (testPods != null) {
+			testPods = testPods.strip();
+		}
+
 	}
 }
