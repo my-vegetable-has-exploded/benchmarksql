@@ -15,16 +15,16 @@
 - Java 11
 - Maven 3.8
 - Python >= 3.9
-- python库: flask numpy matplotlib jproperties
+- python库: flask numpy matplotlib jproperties pyyaml
 
 ### 工具编译部署
 
 ```shell
-mvn package -Dskiptest
+mvn package -DskipTests
 
 python3 -m venv tool
 source tool/bin/activate
-pip3 install flask numpy matplotlib jproperties
+pip3 install flask numpy matplotlib jproperties pyyaml
 pip install pymser==1.0.18
 cd target/run
 ./FlaskService/main.py & > tool.log 2>&1

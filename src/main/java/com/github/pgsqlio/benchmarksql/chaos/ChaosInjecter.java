@@ -1,23 +1,23 @@
 package com.github.pgsqlio.benchmarksql.chaos;
 
-import com.github.pgsqlio.benchmarksql.jtpcc.SystemConfig;
-import com.github.pgsqlio.benchmarksql.jtpcc.jTPCC;
-
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.FileOutputStream;
-import java.util.HashMap;
-import java.util.Iterator;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.yaml.snakeyaml.Yaml;
+
+import com.github.pgsqlio.benchmarksql.jtpcc.SystemConfig;
+import com.github.pgsqlio.benchmarksql.jtpcc.jTPCC;
 
 // ChaosInjecter - Inject chaos faults
 public class ChaosInjecter {
@@ -145,6 +145,20 @@ public class ChaosInjecter {
 		return value;
 	}
 
+	private String getRolepodsStrByField(SystemConfig config, String roleConstraint) {
+		String rolepodsStr = null;
+		if (roleConstraint.equals("storage")) {
+			rolepodsStr =  config.storagePods;
+		}
+		if (roleConstraint.equals("compute")) {
+			rolepodsStr =  config.computePods;
+		}
+		if (roleConstraint.equals("test")) {
+			rolepodsStr =  config.testPods;
+		}
+		return rolepodsStr;
+	}
+
 	public List<String> generateScope(SystemConfig config, String placeholder) throws Exception {
 		// Scope placeholder need to replace by list of pods,
 		// scope placeholder constraints are connect by '-',
@@ -218,7 +232,11 @@ public class ChaosInjecter {
 		// role constraints
 		String roleConstraint = constraints[constraints.length - 2];
 		if (roleConstraint.equals("storage") || roleConstraint.equals("compute") || roleConstraint.equals("test")) {
-			String rolepodsStr = config.getProp(config.p, "sys." + roleConstraint + ".pods");
+			// String rolepodsStr = config.getProp(config.p, "sys." + roleConstraint + ".pods");
+			String rolepodsStr = getRolepodsStrByField(config, roleConstraint);
+			if (rolepodsStr != null) {
+				System.out.println("rolepodsStr: " + rolepodsStr);
+			}
 			if (rolepodsStr == null) {
 				throw new Exception("role " + roleConstraint + " not set");
 			}
