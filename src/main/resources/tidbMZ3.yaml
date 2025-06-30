@@ -1,0 +1,73 @@
+scenario: random fail tikv, leader random
+
+# k8scli user@ip
+sys.k8scli: wy@133.133.135.56
+sys.namespace: tidb3
+sys.pods: tidb3-tikv-0,tidb3-tikv-1,tidb3-tikv-2,tidb3-tikv-3,tidb3-tikv-4,tidb3-tikv-5,tidb3-tidb-0,tidb3-tidb-1,tidb3-tidb-2,tidb3-tidb-3,tidb3-tidb-4,tidb3-tidb-5
+sys.leaderzone: zone1
+sys.zones: zone1,zone2,zone3
+sys.zone1.pods: tidb3-tidb-1,tidb3-tidb-2,tidb3-tikv-2,tidb3-tikv-3 
+sys.zone2.pods: tidb3-tidb-0,tidb3-tidb-3,tidb3-tikv-1,tidb3-tikv-5
+sys.zone3.pods: tidb3-tidb-4,tidb3-tidb-5,tidb3-tikv-0,tidb3-tikv-4
+sys.storage.pods: tidb3-tikv-0,tidb3-tikv-1,tidb3-tikv-2,tidb3-tikv-3,tidb3-tikv-4,tidb3-tikv-5
+sys.compute.pods: tidb3-tidb-0,tidb3-tidb-1,tidb3-tidb-2,tidb3-tidb-3,tidb3-tidb-4,tidb3-tidb-5
+sys.faults: leader_zone_storage_all_net_delay_latency_016ms.yaml
+sys.storage.volumePath: /var/lib/tikv
+sys.compute.volumePath: /var/log/tidb
+sys.faulttime: 1
+
+db: tidb
+driver: com.mysql.cj.jdbc.Driver
+application: Generic
+conn: jdbc:mysql://133.133.135.56:31377/tpccdb?useSSL=false&useServerPrepStmts=true&useConfigs=maxPerformance&rewriteBatchedStatements=true&cachePrepStmts=true&prepStmtCacheSize=1000&prepStmtCacheSqlLimit=2048
+user: root
+password: 123@Test
+
+# Scaling and timing configuration
+warehouses: 100
+loadWorkers: 16
+monkeys: 8
+sutThreads: 32
+maxDeliveryBGThreads: 0
+maxDeliveryBGPerWarehouse: 0
+rampupMins: 2
+rampupSUTMins: 1
+rampupTerminalMins: 0
+runMins: 3
+reportIntervalSecs: 1
+restartSUTThreadProbability: 0.0
+keyingTimeMultiplier: 1
+thinkTimeMultiplier: 1
+traceTerminalIO: false
+
+# Below are the definitions for the "attempted" transaction mix.
+paymentWeight: 0.0
+orderStatusWeight: 0.0
+deliveryWeight: 0.0
+stockLevelWeight: 0.0
+storeWeight: 0.0
+
+# The TPC-C require a minimum of 1% of the NEW_ORDER transactions to roll back due to a user entry error (non existing item number). Doing it with a strict 1/100th probability can lead to undershooting this target, so we default to 1.01% to be sure.
+rollbackPercent: 0.0
+
+# Directory name to create for collecting detailed result data.
+resultDirectory: my_result_%tY-%tm-%td_%tH%tM%tS
+
+# BenchmarkSQL includes three OS metric collector scripts implemented in Python3.
+
+# mcCollectdMqtt.py is a metric collector that expects the collectd instances on the servers to send the metric data to an MQTT broker.
+
+#osCollectorScript: ./mcCollectdMqtt.py -h mymqttbroker.localdomain -t collectd/mydbserver.localdomain/# -t collectd/mybackrest.localdomain/#
+
+# mcCollectdGraphite.py is a metric collector that expects the collectd instances on the servers to send the metric data to a graphite/whisper database and be available through the /render API.
+
+#osCollectorScript: ./mcCollectdGraphite.py -u http://mygraphite.localdomain/render/ -t collectd.mydbserver_localdomain.*.* -t collectd.mydbserver_localdomain.*.*.* -t collectd.mybackrest_localdomain.*.* -t collectd.mybackrest_localdomain.*.*.*
+
+# mcPrometheus.py retrieves the metric data from a Prometheus server through the API.
+
+#osCollectorScript: ./mcPrometheus.py -u http://myprometheus.localdomain:9090/api/v1/query_range -i mydbserver.localdomain:9100 -i mybackrest.localdomain:9100
+
+# The report script is what generates the detailed HTML report for the benchmark run.
+reportScript: ./generateReport.py -t report_simple.html
+
+#reportScript: ./generateReport.py -t report_extended.html -c 'mydbserver.localdomain:DB server' -d 'mydbserver.localdomain:DB server:hda2' -i 'mydbserver.localdomain:DB server:eth0' -c 'mybackrest.localdomain:pgbackrest server' -d 'mybackrest.localdomain:pgbackrest server:hda2' -i 'mybackrest.localdomain:pgbackrest server:eth0'

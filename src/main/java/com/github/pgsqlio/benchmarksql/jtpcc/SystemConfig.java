@@ -104,4 +104,79 @@ public class SystemConfig {
 		}
 
 	}
+
+	String getValFromYaml(HashMap<String, Object> yamlMap, String key, String defVal) {
+		Object val = yamlMap.get(key);
+		String result = val != null ? val.toString() : defVal;
+		logger.info("system config, {}={}", key, result);
+		return result;
+	}
+
+	String getValFromYaml(HashMap<String, Object> yamlMap, String key) {
+		Object val = yamlMap.get(key);
+		String result = val != null ? val.toString() : null;
+		logger.info("system config, {}={}", key, result);
+		return result;
+	}
+
+	public SystemConfig(HashMap<String, Object> yamlMap) {
+		// get the properties
+		k8scli = getValFromYaml(yamlMap, "sys.k8scli");
+		namespace = getValFromYaml(yamlMap, "sys.namespace");
+		volumePath = getValFromYaml(yamlMap, "sys.volumePath");
+
+		String podsStr = getValFromYaml(yamlMap, "sys.pods");
+		if (podsStr != null) {
+			for (String pod : podsStr.split(",")) {
+				pods.add(pod.strip());
+			}
+		}
+
+		String zonesStr = getValFromYaml(yamlMap, "sys.zones");
+		if (zonesStr != null) {
+			for (String zone : zonesStr.split(",")) {
+				zones.add(zone.strip());
+			}
+		}
+
+		for (String zone : zones) {
+			String podsInZoneString = getValFromYaml(yamlMap, "sys." + zone + ".pods");
+			ArrayList<String> podsInZone = new ArrayList<>();
+			if (podsInZoneString != null) {
+				for (String pod : podsInZoneString.split(",")) {
+					podsInZone.add(pod.strip());
+				}
+			}
+			zonePods.put(zone, podsInZone);
+		}
+
+		leaderzone = getValFromYaml(yamlMap, "sys.leaderzone");
+
+		String faultsStr = getValFromYaml(yamlMap, "sys.faults");
+		if (faultsStr != null) {
+			for (String fault : faultsStr.split(",")) {
+				faults.add(fault.strip());
+			}
+		}
+
+		String faultTimeStr = getValFromYaml(yamlMap, "sys.faulttime");
+		if (faultTimeStr != null) {
+			faultTime = Integer.parseInt(faultTimeStr);
+		} else {
+			faultTime = 10; // default
+		}
+
+		// populate confs map
+		for (String key : yamlMap.keySet()) {
+			String valStr = getValFromYaml(yamlMap, key);
+			if (key.startsWith("sys.")) {
+				confs.put(key.substring(4), valStr);
+			}
+		}
+
+		storagePods = getValFromYaml(yamlMap, "sys.storage.pods");
+		computePods = getValFromYaml(yamlMap, "sys.compute.pods");
+		testPods = getValFromYaml(yamlMap, "sys.test.pods");
+	}
+
 }

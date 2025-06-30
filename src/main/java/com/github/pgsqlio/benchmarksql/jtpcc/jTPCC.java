@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -14,11 +15,13 @@ import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Formatter;
+import java.util.HashMap;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.yaml.snakeyaml.Yaml;
 
 import com.github.pgsqlio.benchmarksql.application.AppGeneric;
 import com.github.pgsqlio.benchmarksql.application.oracle.AppOracleStoredProc;
@@ -124,19 +127,57 @@ public class jTPCC {
     return (prop);
   }
 
+  boolean useYaml = false;
+  private HashMap<String, Object> yamlMap;
+  private Properties ini;
+
+  String getVal(String key, String defVal) {
+    if (useYaml) {
+      Object val = yamlMap.get(key);
+      String result = val != null ? val.toString() : defVal;
+      log.info("main, {}={}", key, result);
+      return result;
+    } else {
+      return getProp(ini, key, defVal);
+    }
+  }
+
+  String getVal(String key) {
+    if (useYaml) {
+      Object val = yamlMap.get(key);
+      String result = val != null ? val.toString() : null;
+      log.info("main, {}={}", key, result);
+      return result;
+    } else {
+      return getProp(ini, key);
+    }
+  }
+
   public jTPCC() throws FileNotFoundException {
     StringBuilder sb = new StringBuilder();
     Formatter fmt = new Formatter(sb);
 
-    // load the ini file
-    Properties ini = new Properties();
-    try {
-      ini.load(new FileInputStream(System.getProperty("prop")));
-    } catch (IOException e) {
-      log.error("main, could not load properties file");
+    String propStr = System.getProperty("prop");
+    // check the propStr is a property file or a yaml file
+    if (propStr.endsWith(".yaml")) {
+      useYaml = true;
+      log.info("main, loading properties from yaml file: {}", propStr);
+      InputStream faultTemplate = new FileInputStream(propStr);
+      Yaml yaml = new Yaml();
+      yamlMap = yaml.load(faultTemplate);
+      sysConfig = new SystemConfig(yamlMap);
+    } else if (propStr.endsWith(".properties")) {
+      // load the ini file
+      ini = new Properties();
+      try {
+        ini.load(new FileInputStream(propStr));
+      } catch (IOException e) {
+        log.error("main, could not load properties file");
+      }
+      sysConfig = new SystemConfig(ini);
+    } else {
+      throw new IllegalArgumentException("Invalid property arguments: " + propStr);
     }
-
-	sysConfig = new SystemConfig(ini);
 
 	// check if the fault is available
 	try {
@@ -162,17 +203,17 @@ public class jTPCC {
     log.info("main,  (c) 2016-2023, Jan Wieck");
     log.info("main, +-------------------------------------------------------------+");
     log.info("main, ");
-    String iDBType = getProp(ini, "db");
-    String iDriver = getProp(ini, "driver");
-    applicationName = getProp(ini, "application");
-    iConn = getProp(ini, "conn");
-    iUser = getProp(ini, "user");
-    iPassword = ini.getProperty("password");
+    String iDBType = getVal("db");
+    String iDriver = getVal("driver");
+    applicationName = getVal("application");
+    iConn = getVal("conn");
+    iUser = getVal("user");
+    iPassword = getVal("password");
 
     log.info("main, ");
-    numWarehouses = Integer.parseInt(getProp(ini, "warehouses"));
-    useWarehouseFrom = Integer.parseInt(getProp(ini, "useWarehouseFrom", "-1"));
-    useWarehouseTo = Integer.parseInt(getProp(ini, "useWarehouseTo", "-1"));
+    numWarehouses = Integer.parseInt(getVal( "warehouses"));
+    useWarehouseFrom = Integer.parseInt(getVal("useWarehouseFrom", "-1"));
+    useWarehouseTo = Integer.parseInt(getVal("useWarehouseTo", "-1"));
     useWarehouses = numWarehouses;
     if (useWarehouseFrom > 0 && useWarehouseTo > 0) {
       useWarehouses = useWarehouseTo - useWarehouseFrom + 1;
@@ -181,27 +222,27 @@ public class jTPCC {
       useWarehouseTo = useWarehouses;
     }
 
-    numMonkeys = Integer.parseInt(getProp(ini, "monkeys", "8"));
-    numSUTThreads = Integer.parseInt(getProp(ini, "sutThreads", "32"));
-    maxDeliveryBGThreads = Integer.parseInt(getProp(ini, "maxDeliveryBGThreads", "0"));
-    maxDeliveryBGPerWH = Integer.parseInt(getProp(ini, "maxDeliveryBGPerWarehouse", "0"));
-    rampupMins = Integer.parseInt(getProp(ini, "rampupMins", "1"));
-    runMins = Integer.parseInt(getProp(ini, "runMins"));
-    rampupSUTMins = Integer.parseInt(getProp(ini, "rampupSUTMins", "1"));
-    rampupTerminalMins = Integer.parseInt(getProp(ini, "rampupTerminalMins", "0"));
-    reportIntervalSecs = Integer.parseInt(getProp(ini, "reportIntervalSecs", "1"));
-    resultIntervalSecs = Integer.parseInt(getProp(ini, "resultIntervalSecs", "1"));
-    restartSUTThreadProb = Double.parseDouble(getProp(ini, "restartSUTThreadProbability", "0"));
-    keyingTimeMultiplier = Double.parseDouble(getProp(ini, "keyingTimeMultiplier", "0.1"));
-    thinkTimeMultiplier = Double.parseDouble(getProp(ini, "thinkTimeMultiplier", "0.1"));
-    terminalMultiplier = Integer.parseInt(getProp(ini, "terminalMultiplier", "1"));
-    traceTerminalIO = Boolean.parseBoolean(getProp(ini, "traceTerminalIO", "false"));
+    numMonkeys = Integer.parseInt(getVal("monkeys", "8"));
+    numSUTThreads = Integer.parseInt(getVal("sutThreads", "32"));
+    maxDeliveryBGThreads = Integer.parseInt(getVal("maxDeliveryBGThreads", "0"));
+    maxDeliveryBGPerWH = Integer.parseInt(getVal("maxDeliveryBGPerWarehouse", "0"));
+    rampupMins = Integer.parseInt(getVal("rampupMins", "1"));
+    runMins = Integer.parseInt(getVal("runMins"));
+    rampupSUTMins = Integer.parseInt(getVal("rampupSUTMins", "1"));
+    rampupTerminalMins = Integer.parseInt(getVal("rampupTerminalMins", "0"));
+    reportIntervalSecs = Integer.parseInt(getVal("reportIntervalSecs", "1"));
+    resultIntervalSecs = Integer.parseInt(getVal("resultIntervalSecs", "1"));
+    restartSUTThreadProb = Double.parseDouble(getVal("restartSUTThreadProbability", "0"));
+    keyingTimeMultiplier = Double.parseDouble(getVal("keyingTimeMultiplier", "0.1"));
+    thinkTimeMultiplier = Double.parseDouble(getVal("thinkTimeMultiplier", "0.1"));
+    terminalMultiplier = Integer.parseInt(getVal("terminalMultiplier", "1"));
+    traceTerminalIO = Boolean.parseBoolean(getVal("traceTerminalIO", "false"));
     log.info("main, ");
-    paymentWeight = Double.parseDouble(getProp(ini, "paymentWeight", "0"));
-    orderStatusWeight = Double.parseDouble(getProp(ini, "orderStatusWeight", "0"));
-    deliveryWeight = Double.parseDouble(getProp(ini, "deliveryWeight", "0"));
-    stockLevelWeight = Double.parseDouble(getProp(ini, "stockLevelWeight", "0"));
-    storeWeight = Double.parseDouble(getProp(ini, "storeWeight", "0"));
+    paymentWeight = Double.parseDouble(getVal("paymentWeight", "0"));
+    orderStatusWeight = Double.parseDouble(getVal("orderStatusWeight", "0"));
+    deliveryWeight = Double.parseDouble(getVal("deliveryWeight", "0"));
+    stockLevelWeight = Double.parseDouble(getVal("stockLevelWeight", "0"));
+    storeWeight = Double.parseDouble(getVal("storeWeight", "0"));
     newOrderWeight = 100.0 - paymentWeight - orderStatusWeight - deliveryWeight - stockLevelWeight - storeWeight;
     if (newOrderWeight < 0.0) {
       log.error("main, newOrderWeight is below zero");
@@ -211,12 +252,13 @@ public class jTPCC {
     log.info("main, {}", sb.toString());
     log.info("main, ");
 
-    rollbackPercent = Double.parseDouble(getProp(ini, "rollbackPercent", "0"));
+    rollbackPercent = Double.parseDouble(getVal("rollbackPercent", "0"));
     log.info("main, ");
 
     numTerms = 10 * terminalMultiplier;
     sutThreadDelay = (rampupSUTMins * 60000) / numSUTThreads;
     terminalDelay = (rampupTerminalMins * 60000) / (useWarehouses * numTerms);
+
 
     if (iDBType.equals("oracle"))
       dbType = jTPCCConfig.DB_ORACLE;
@@ -328,8 +370,8 @@ public class jTPCC {
     /*
      * Launch the OS metric collector if configured
      */
-    String resultDirectory = getProp(ini, "resultDirectory");
-    String osCollectorScript = getProp(ini, "osCollectorScript");
+    String resultDirectory = getVal("resultDirectory");
+    String osCollectorScript = getVal("osCollectorScript");
 
     if (resultDirectory != null) {
       StringBuffer sbRes = new StringBuffer();
@@ -371,14 +413,15 @@ public class jTPCC {
       }
 
       // Copy the used properties file into the resultDirectory.
+      File resultConfigFile = useYaml? new File(resultDir, "run.yaml") : new File(resultDir, "run.properties");
       try {
-        copyFile(new File(System.getProperty("prop")), new File(resultDir, "run.properties"));
+        copyFile(new File(System.getProperty("prop")), resultConfigFile);
       } catch (Exception e) {
         log.error(e.getMessage());
         System.exit(1);
       }
       log.info("main, copied {} to {}", System.getProperty("prop"),
-          new File(resultDir, "run.properties").getPath());
+          resultConfigFile.getPath());
 
       // Create the runInfo.csv file.
       String runInfoCSVName = new File(resultDataDir, "runInfo.csv").getPath();
@@ -472,7 +515,7 @@ public class jTPCC {
       // Launch the metric collector script if configured
       if (osCollectorScript != null) {
         try {
-          osCollector = new OSCollector(getProp(ini, "osCollectorScript"),
+          osCollector = new OSCollector(getVal("osCollectorScript"),
               resultDataDir);
         } catch (IOException e) {
           log.error(e.getMessage());
@@ -489,7 +532,7 @@ public class jTPCC {
      * command line), we consume the property so that it is reported
      * in the logs.
      */
-    String reportScript = getProp(ini, "reportScript");
+    String reportScript = getVal("reportScript");
 
     /* Initialize the random number generator and report C values. */
     rnd = new jTPCCRandom(loadNuRandCLast);
