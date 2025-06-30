@@ -1,7 +1,9 @@
 package com.github.pgsqlio.benchmarksql.chaos;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -320,14 +322,8 @@ public class ChaosInjecter {
 		}
 	}
 
-	public ChaosFault initialFault(SystemConfig config, String faultName) throws Exception {
-		// read fault description from faultName
-		String faultTemplateFile = templatePath + faultName;
-		// read fault template
-		InputStream faultTemplate = new FileInputStream(faultTemplateFile);
-		// parse fault template
-		Yaml yaml = new Yaml();
-		HashMap<String, Object> fault = yaml.load(faultTemplate);
+	private ChaosFault instantiateFault(SystemConfig config, String faultName, Yaml yaml, HashMap<String, Object> fault)
+			throws Exception, FileNotFoundException, IOException {
 		int duration = durationParse((String) fault.get("duration"));
 		// find placeholders
 		ArrayList<String> placeholders = new ArrayList<String>();
@@ -355,6 +351,22 @@ public class ChaosInjecter {
 		chaosOutput.write(chaosData.getBytes());
 		chaosOutput.close();
 		return new ChaosFault(config.k8scli, chaosPath, duration);
+	}
+
+	public ChaosFault initialFault(SystemConfig config, String faultName) throws Exception {
+		// read fault description from faultName
+		String faultTemplateFile = templatePath + faultName;
+		// read fault template
+		InputStream faultTemplate = new FileInputStream(faultTemplateFile);
+		// parse fault template
+		Yaml yaml = new Yaml();
+		HashMap<String, Object> fault = yaml.load(faultTemplate);
+		return instantiateFault(config, faultName, yaml, fault);
+	}
+
+	public ChaosFault initialFaultWithCombinedConfig(SystemConfig config, String faultName, HashMap<String, Object> fault) throws Exception {
+		Yaml yaml = new Yaml();
+		return instantiateFault(config, faultName, yaml, fault);
 	}
 
 	public void inject() throws Exception {

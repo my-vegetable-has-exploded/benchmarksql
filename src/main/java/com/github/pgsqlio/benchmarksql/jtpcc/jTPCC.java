@@ -153,6 +153,17 @@ public class jTPCC {
     }
   }
 
+    HashMap<String, Object> getFaultInfoMap() {
+    HashMap<String, Object> faultInfoMap = new HashMap<String, Object>();
+    for (String key : yamlMap.keySet()) {
+      String valStr = getVal(key);
+      if (key.startsWith("fault.")) {
+        faultInfoMap.put(key.substring(6), valStr);
+      }
+    }
+    return faultInfoMap;
+  }
+
   public jTPCC() throws FileNotFoundException {
     StringBuilder sb = new StringBuilder();
     Formatter fmt = new Formatter(sb);
@@ -181,15 +192,20 @@ public class jTPCC {
 
 	// check if the fault is available
 	try {
-	  ChaosInjecter injecter = ChaosInjecter.getInstance(this);
-	  for (String fault: sysConfig.faults) {
-		injecter.initialFault(sysConfig, fault);
-	  }
-	} catch (Exception e) {
-	  log.error("main, could not init fault file, " + e.getMessage());
-	  // Don't exit this case, exit with error code
+      ChaosInjecter injecter = ChaosInjecter.getInstance(this);
+      for (String fault : sysConfig.faults) {
+        if (useYaml) {
+          HashMap<String, Object> faultInfoMap = getFaultInfoMap();
+          injecter.initialFaultWithCombinedConfig(sysConfig, fault, faultInfoMap);
+        } else {
+          injecter.initialFault(sysConfig, fault);
+        }
+      }
+    } catch (Exception e) {
+      log.error("main, could not init fault file, " + e.getMessage());
+      // Don't exit this case, exit with error code
       System.exit(1);
-	}
+    }
 
     /*
      * Get all the configuration settings
