@@ -24,6 +24,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
+import com.github.pgsqlio.benchmarksql.application.AppCRDB;
 import com.github.pgsqlio.benchmarksql.application.AppGeneric;
 import com.github.pgsqlio.benchmarksql.application.oracle.AppOracleStoredProc;
 import com.github.pgsqlio.benchmarksql.application.postgres.AppPostgreSQLStoredProc;
@@ -309,6 +310,10 @@ public class jTPCC {
 	  dbType = jTPCCConfig.DB_TiDB;
     else if (iDBType.equals("polardb"))
       dbType = jTPCCConfig.DB_POLARDB; 
+    else if (iDBType.equals("dameng"))
+      dbType = jTPCCConfig.DB_DAMENG;
+    else if (iDBType.equals("crdb"))
+      dbType = jTPCCConfig.DB_CRDB;
     else {
       log.error("Unknown database type '{}'", iDBType);
       return;
@@ -386,7 +391,7 @@ public class jTPCC {
      * Check that we support the requested application implementation
      */
     if (!applicationName.equals("Generic") && !applicationName.equals("PostgreSQLStoredProc")
-        && !applicationName.equals("OracleStoredProc")) {
+        && !applicationName.equals("OracleStoredProc") && !applicationName.equals("CRDB")) {
       log.error("Unknown application name '{}'", applicationName);
       return;
     }
@@ -746,6 +751,8 @@ public class jTPCC {
   public jTPCCApplication getApplication() {
     if (applicationName.equals("Generic"))
       return new AppGeneric();
+    if (applicationName.equals("CRDB"))
+      return new AppCRDB();
     if (applicationName.equals("PostgreSQLStoredProc"))
       return new AppPostgreSQLStoredProc();
     if (applicationName.equals("OracleStoredProc"))

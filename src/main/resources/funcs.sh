@@ -60,6 +60,12 @@ function setCP()
 	polardb)
 	    cp="../lib/*"
 	    ;;
+	dameng)
+	    cp="../lib/*"
+	    ;;
+  crdb)
+      cp="../lib/*"
+      ;;
     esac
     myCP="./:../BenchmarkSQL.jar:${cp}"
     export myCP
@@ -71,7 +77,7 @@ function setCP()
 # ----
 db=$(getProp db)
 case "${db}" in
-    oracle|postgres|firebird|mariadb|transact-sql|babelfish|mysql|oceanbase|tidb|polardb)
+    oracle|postgres|firebird|mariadb|transact-sql|babelfish|mysql|oceanbase|tidb|polardb|dameng|crdb)
 	;;
     "")	echo "ERROR: missing db= config option in ${PROPS}" >&2
 	exit 1

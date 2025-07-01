@@ -16,6 +16,8 @@ kubectl delete podchaos --all -n chaos-testing
 kubectl delete networkchaos --all -n chaos-testing
 
 kubectl delete StressChaos --all -n chaos-testing
+
+kubectl delete TimeChaos --all -n chaos-testing
 EOF
 
 # 脚本结束

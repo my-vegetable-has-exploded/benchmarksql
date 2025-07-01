@@ -12,7 +12,8 @@ import org.apache.logging.log4j.Logger;
 import com.github.pgsqlio.benchmarksql.jtpcc.jTPCCRandom;
 
 /**
- * LoadDataWorker - Class to load one Warehouse (or in a special case the ITEM table).
+ * LoadDataWorker - Class to load one Warehouse (or in a special case the ITEM
+ * table).
  *
  * Copyright (C) 2016, Denis Lussier Copyright (C) 2016, Jan Wieck
  */
@@ -137,6 +138,29 @@ public class LoadDataWorker implements Runnable {
         "INSERT INTO bmsql_new_order (" + "  no_o_id, no_d_id, no_w_id) " + "VALUES (?, ?, ?)");
   }
 
+  public void commitWithRetry(PreparedStatement stmt, String table_name) throws SQLException {
+    int retry_count = 1;
+    while (true) {
+      try {
+        stmt.executeBatch();
+        dbConn.commit();
+        stmt.clearBatch();
+        break;
+      } catch (SQLException se) {
+        if (retry_count >= 20)
+          throw se;
+        while (se != null) {
+          fmt.format("table[%s] retry %03d, ERROR: %s", table_name, retry_count, se.getMessage());
+          log.error(sb.toString());
+          sb.setLength(0);
+          se = se.getNextException();
+        }
+        retry_count++;
+        dbConn.rollback();
+      }
+    }
+  }
+
   /*
    * run()
    */
@@ -215,19 +239,19 @@ public class LoadDataWorker implements Runnable {
        */
       stmtConfig.setString(1, "warehouses");
       stmtConfig.setString(2, "" + LoadData.getNumWarehouses());
-      stmtConfig.execute();
+      commitWithRetry(stmtConfig, "bmsql_config");
 
       stmtConfig.setString(1, "nURandCLast");
       stmtConfig.setString(2, "" + rnd.getNURandCLast());
-      stmtConfig.execute();
+      commitWithRetry(stmtConfig, "bmsql_config");
 
       stmtConfig.setString(1, "nURandCC_ID");
       stmtConfig.setString(2, "" + rnd.getNURandCC_ID());
-      stmtConfig.execute();
+      commitWithRetry(stmtConfig, "bmsql_config");
 
       stmtConfig.setString(1, "nURandCI_ID");
       stmtConfig.setString(2, "" + rnd.getNURandCI_ID());
-      stmtConfig.execute();
+      commitWithRetry(stmtConfig, "bmsql_config");
     }
 
     for (i_id = 1; i_id <= 100000; i_id++) {
@@ -237,7 +261,8 @@ public class LoadDataWorker implements Runnable {
         if (writeCSV) {
           LoadData.itemAppend(sbItem);
         } else {
-          stmtItem.executeBatch();
+          // stmtItem.executeBatch();
+          commitWithRetry(stmtItem, "bmsql_item");
           stmtItem.clearBatch();
         }
       }
@@ -247,8 +272,7 @@ public class LoadDataWorker implements Runnable {
         int len = rnd.nextInt(26, 50);
         int off = rnd.nextInt(0, len - 8);
 
-        iData =
-            rnd.getAString(off, off) + "ORIGINAL" + rnd.getAString(len - off - 8, len - off - 8);
+        iData = rnd.getAString(off, off) + "ORIGINAL" + rnd.getAString(len - off - 8, len - off - 8);
       } else {
         iData = rnd.getAString_26_50();
       }
@@ -271,11 +295,11 @@ public class LoadDataWorker implements Runnable {
     if (writeCSV) {
       LoadData.itemAppend(sbItem);
     } else {
-      stmtItem.executeBatch();
-      stmtItem.clearBatch();
-      stmtItem.close();
-
-      dbConn.commit();
+      // stmtItem.executeBatch();
+      // stmtItem.clearBatch();
+      // stmtItem.close();
+      commitWithRetry(stmtItem, "bmsql_item");
+      // dbConn.commit();
     }
 
   } // End loadItem()
@@ -309,7 +333,7 @@ public class LoadDataWorker implements Runnable {
       stmtWarehouse.setDouble(8, ((double) rnd.nextLong(0, 2000)) / 10000.0);
       stmtWarehouse.setDouble(9, 300000.0);
 
-      stmtWarehouse.execute();
+      commitWithRetry(stmtWarehouse, "bmsql_warehouse");
     }
 
     /*
@@ -324,7 +348,8 @@ public class LoadDataWorker implements Runnable {
         if (writeCSV)
           LoadData.warehouseAppend(sbWarehouse);
         else {
-          stmtStock.executeBatch();
+          // stmtStock.executeBatch();
+          commitWithRetry(stmtStock, "bmsql_stock");
           stmtStock.clearBatch();
         }
       }
@@ -334,8 +359,7 @@ public class LoadDataWorker implements Runnable {
         int len = rnd.nextInt(26, 50);
         int off = rnd.nextInt(0, len - 8);
 
-        sData =
-            rnd.getAString(off, off) + "ORIGINAL" + rnd.getAString(len - off - 8, len - off - 8);
+        sData = rnd.getAString(off, off) + "ORIGINAL" + rnd.getAString(len - off - 8, len - off - 8);
       } else {
         sData = rnd.getAString_26_50();
       }
@@ -371,7 +395,8 @@ public class LoadDataWorker implements Runnable {
     if (writeCSV) {
       LoadData.stockAppend(sbStock);
     } else {
-      stmtStock.executeBatch();
+      // stmtStock.executeBatch();
+      commitWithRetry(stmtStock, "bmsql_stock");
       stmtStock.clearBatch();
     }
 
@@ -399,7 +424,7 @@ public class LoadDataWorker implements Runnable {
         stmtDistrict.setDouble(10, 30000.0);
         stmtDistrict.setInt(11, 3001);
 
-        stmtDistrict.execute();
+        commitWithRetry(stmtDistrict, "bmsql_district");
       }
 
       /*
@@ -474,15 +499,24 @@ public class LoadDataWorker implements Runnable {
         LoadData.customerAppend(sbCustomer);
         LoadData.historyAppend(sbHistory);
       } else {
-        stmtCustomer.executeBatch();
+        // stmtCustomer.executeBatch();
+        commitWithRetry(stmtCustomer, "bmsql_customer");
         stmtCustomer.clearBatch();
-        stmtHistory.executeBatch();
+        // stmtHistory.executeBatch();
+        commitWithRetry(stmtHistory, "bmsql_history");
         stmtHistory.clearBatch();
       }
     }
 
-    if (!writeCSV)
-      dbConn.commit();
+    if (!writeCSV){
+      // Commit the WAREHOUSE, DISTRICT, STOCK, CUSTOMER and HISTORY rows.
+      commitWithRetry(stmtWarehouse, "bmsql_warehouse");
+      commitWithRetry(stmtDistrict, "bmsql_district");
+      commitWithRetry(stmtStock, "bmsql_stock");
+      commitWithRetry(stmtCustomer, "bmsql_customer");
+      commitWithRetry(stmtHistory, "bmsql_history");
+    }
+      // dbConn.commit();
   } // End loadWarehouse()
 
   /*
@@ -572,15 +606,26 @@ public class LoadDataWorker implements Runnable {
       LoadData.orderLineAppend(sbOrderLine);
       LoadData.newOrderAppend(sbNewOrder);
     } else {
-      stmtOrder.executeBatch();
-      stmtOrder.clearBatch();
-      stmtOrderLine.executeBatch();
-      stmtOrderLine.clearBatch();
-      stmtNewOrder.executeBatch();
-      stmtNewOrder.clearBatch();
+      // stmtOrder.executeBatch();
+      // stmtOrder.clearBatch();
+      // stmtOrderLine.executeBatch();
+      // stmtOrderLine.clearBatch();
+      // stmtNewOrder.executeBatch();
+      // stmtNewOrder.clearBatch();
+      commitWithRetry(stmtOrder, "bmsql_oorder");
+      commitWithRetry(stmtOrderLine, "bmsql_order_line");
+      commitWithRetry(stmtNewOrder, "bmsql_new_order");
+      // stmtOrder.clearBatch();
+      // stmtOrderLine.clearBatch();
+      // stmtNewOrder.clearBatch();
     }
 
-    if (!writeCSV)
-      dbConn.commit();
+    if (!writeCSV){
+      // Commit the ORDER, ORDER_LINE and NEW_ORDER rows.
+      commitWithRetry(stmtOrder, "bmsql_oorder");
+      commitWithRetry(stmtOrderLine, "bmsql_order_line");
+      commitWithRetry(stmtNewOrder, "bmsql_new_order");
+    }
+      // dbConn.commit();
   } // End loadOrder()
 }
