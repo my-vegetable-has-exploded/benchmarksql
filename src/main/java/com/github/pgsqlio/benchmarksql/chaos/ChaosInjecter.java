@@ -354,7 +354,18 @@ public class ChaosInjecter {
 		InputStream faultTemplate = new FileInputStream(faultTemplateFile);
 		// parse fault template
 		Yaml yaml = new Yaml();
-		HashMap<String, Object> fault = yaml.load(faultTemplate);
+		HashMap<String, Object> orifault = yaml.load(faultTemplate);
+		HashMap<String, Object> fault = new HashMap<String, Object>();
+		for (String key : orifault.keySet()) {
+			Object valStr = orifault.get(key);
+			if (key.startsWith("fault.")) {
+				logger.info("main, faultInfoMap, {}={}", key.substring(6), valStr);
+				fault.put(key.substring(6), valStr);
+			} else {
+				logger.info("main, faultInfoMap, {}={}", key, valStr);
+				fault.put(key, valStr);
+			}
+		}
 		return instantiateFault(config, faultName, yaml, fault);
 	}
 

@@ -17,7 +17,6 @@ import java.util.Calendar;
 import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Properties;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
@@ -138,22 +137,11 @@ public class jTPCC {
     }
   }
 
-  HashMap<String, Object> getFaultInfoMapWithSpecifiedFields(HashMap<String, Object> nYamlMap) {
-    // String[] faultFieldArray = {"duration", "injectpods", "load", "template", "workers", "loss", "percent", "volumePath"};
-    // Set<String> faultFieldSet = new java.util.HashSet<String>(java.util.Arrays.asList(faultFieldArray));
-    HashMap<String, Object> faultInfoMap = new HashMap<String, Object>();
-    for (String key : nYamlMap.keySet()) {
-      Object valObj = nYamlMap.get(key);
-      String valStr = valObj != null ? valObj.toString() : null;
-      // if (faultFieldSet.contains(key)) {
-      // }
-        log.info("main, faultInfoMap, {}={}", key, valStr);
-        faultInfoMap.put(key, valStr);
-    }
-    return faultInfoMap;
-  }
-
-  HashMap<String, Object> getFaultInfoMapWithPrefix(HashMap<String, Object> nYamlMap) {
+  /*
+   * Transform all key-valuas paiers in the yamlMap (FaultTemplate) to the faultInfoMap,
+   * if the key starts with "fault." (config of new version), remove the prefix "fault."
+   */
+  HashMap<String, Object> getFaultInfoMap(HashMap<String, Object> nYamlMap) {
     HashMap<String, Object> faultInfoMap = new HashMap<String, Object>();
     for (String key : nYamlMap.keySet()) {
       Object valObj = nYamlMap.get(key);
@@ -161,16 +149,9 @@ public class jTPCC {
       if (key.startsWith("fault.")) {
         log.info("main, faultInfoMap, {}={}", key, valStr);
         faultInfoMap.put(key.substring(6), valStr);
+      } else {
+        faultInfoMap.put(key, valStr);
       }
-    }
-    return faultInfoMap;
-  }
-
-  HashMap<String, Object> getFaultInfoMap(HashMap<String, Object> nYamlMap) {
-    HashMap<String, Object> faultInfoMap = new HashMap<String, Object>();
-    faultInfoMap = getFaultInfoMapWithPrefix(nYamlMap);
-    if (faultInfoMap.isEmpty()) {
-      faultInfoMap = getFaultInfoMapWithSpecifiedFields(nYamlMap);
     }
     return faultInfoMap;
   }
