@@ -139,16 +139,16 @@ public class jTPCC {
   }
 
   HashMap<String, Object> getFaultInfoMapWithSpecifiedFields(HashMap<String, Object> nYamlMap) {
-    String[] faultFieldArray = {"duration", "injectpods", "load", "template", "workers", "loss", "percent", "volumePath"};
-    Set<String> faultFieldSet = new java.util.HashSet<String>(java.util.Arrays.asList(faultFieldArray));
+    // String[] faultFieldArray = {"duration", "injectpods", "load", "template", "workers", "loss", "percent", "volumePath"};
+    // Set<String> faultFieldSet = new java.util.HashSet<String>(java.util.Arrays.asList(faultFieldArray));
     HashMap<String, Object> faultInfoMap = new HashMap<String, Object>();
     for (String key : nYamlMap.keySet()) {
       Object valObj = nYamlMap.get(key);
       String valStr = valObj != null ? valObj.toString() : null;
-      if (faultFieldSet.contains(key)) {
+      // if (faultFieldSet.contains(key)) {
+      // }
         log.info("main, faultInfoMap, {}={}", key, valStr);
         faultInfoMap.put(key, valStr);
-      }
     }
     return faultInfoMap;
   }
@@ -333,8 +333,6 @@ public class jTPCC {
       log.error("main, {}", ex.getMessage());
       return;
     }
-
-    System.exit(1);
 
     /*
      * Get the load configuration from the database and clear bmsql_txnlog table
