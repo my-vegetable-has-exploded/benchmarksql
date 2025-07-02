@@ -138,13 +138,36 @@ public class LoadDataWorker implements Runnable {
         "INSERT INTO bmsql_new_order (" + "  no_o_id, no_d_id, no_w_id) " + "VALUES (?, ?, ?)");
   }
 
-  public void commitWithRetry(PreparedStatement stmt, String table_name) throws SQLException {
+  public void executeBatchWithRetry(PreparedStatement stmt, String table_name) throws SQLException {
     int retry_count = 1;
     while (true) {
       try {
         stmt.executeBatch();
         dbConn.commit();
         stmt.clearBatch();
+        break;
+      } catch (SQLException se) {
+        if (retry_count >= 20)
+          throw se;
+        while (se != null) {
+          fmt.format("table[%s] retry %03d, ERROR: %s", table_name, retry_count, se.getMessage());
+          log.error(sb.toString());
+          sb.setLength(0);
+          se = se.getNextException();
+        }
+        retry_count++;
+        dbConn.rollback();
+      }
+    }
+  }
+
+    public void executeWithRetry(PreparedStatement stmt, String table_name) throws SQLException {
+    int retry_count = 1;
+    while (true) {
+      try {
+        stmt.execute();
+        dbConn.commit();
+        // stmt.clear();
         break;
       } catch (SQLException se) {
         if (retry_count >= 20)
@@ -239,19 +262,19 @@ public class LoadDataWorker implements Runnable {
        */
       stmtConfig.setString(1, "warehouses");
       stmtConfig.setString(2, "" + LoadData.getNumWarehouses());
-      commitWithRetry(stmtConfig, "bmsql_config");
+      executeWithRetry(stmtConfig, "bmsql_config");
 
       stmtConfig.setString(1, "nURandCLast");
       stmtConfig.setString(2, "" + rnd.getNURandCLast());
-      commitWithRetry(stmtConfig, "bmsql_config");
+      executeWithRetry(stmtConfig, "bmsql_config");
 
       stmtConfig.setString(1, "nURandCC_ID");
       stmtConfig.setString(2, "" + rnd.getNURandCC_ID());
-      commitWithRetry(stmtConfig, "bmsql_config");
+      executeWithRetry(stmtConfig, "bmsql_config");
 
       stmtConfig.setString(1, "nURandCI_ID");
       stmtConfig.setString(2, "" + rnd.getNURandCI_ID());
-      commitWithRetry(stmtConfig, "bmsql_config");
+      executeWithRetry(stmtConfig, "bmsql_config");
     }
 
     for (i_id = 1; i_id <= 100000; i_id++) {
@@ -262,7 +285,7 @@ public class LoadDataWorker implements Runnable {
           LoadData.itemAppend(sbItem);
         } else {
           // stmtItem.executeBatch();
-          commitWithRetry(stmtItem, "bmsql_item");
+          executeBatchWithRetry(stmtItem, "bmsql_item");
           stmtItem.clearBatch();
         }
       }
@@ -298,7 +321,7 @@ public class LoadDataWorker implements Runnable {
       // stmtItem.executeBatch();
       // stmtItem.clearBatch();
       // stmtItem.close();
-      commitWithRetry(stmtItem, "bmsql_item");
+      executeBatchWithRetry(stmtItem, "bmsql_item");
       // dbConn.commit();
     }
 
@@ -333,7 +356,7 @@ public class LoadDataWorker implements Runnable {
       stmtWarehouse.setDouble(8, ((double) rnd.nextLong(0, 2000)) / 10000.0);
       stmtWarehouse.setDouble(9, 300000.0);
 
-      commitWithRetry(stmtWarehouse, "bmsql_warehouse");
+      executeWithRetry(stmtWarehouse, "bmsql_warehouse");
     }
 
     /*
@@ -349,7 +372,7 @@ public class LoadDataWorker implements Runnable {
           LoadData.warehouseAppend(sbWarehouse);
         else {
           // stmtStock.executeBatch();
-          commitWithRetry(stmtStock, "bmsql_stock");
+          executeBatchWithRetry(stmtStock, "bmsql_stock");
           stmtStock.clearBatch();
         }
       }
@@ -396,7 +419,7 @@ public class LoadDataWorker implements Runnable {
       LoadData.stockAppend(sbStock);
     } else {
       // stmtStock.executeBatch();
-      commitWithRetry(stmtStock, "bmsql_stock");
+      executeBatchWithRetry(stmtStock, "bmsql_stock");
       stmtStock.clearBatch();
     }
 
@@ -424,7 +447,7 @@ public class LoadDataWorker implements Runnable {
         stmtDistrict.setDouble(10, 30000.0);
         stmtDistrict.setInt(11, 3001);
 
-        commitWithRetry(stmtDistrict, "bmsql_district");
+        executeWithRetry(stmtDistrict, "bmsql_district");
       }
 
       /*
@@ -500,21 +523,21 @@ public class LoadDataWorker implements Runnable {
         LoadData.historyAppend(sbHistory);
       } else {
         // stmtCustomer.executeBatch();
-        commitWithRetry(stmtCustomer, "bmsql_customer");
+        executeBatchWithRetry(stmtCustomer, "bmsql_customer");
         stmtCustomer.clearBatch();
         // stmtHistory.executeBatch();
-        commitWithRetry(stmtHistory, "bmsql_history");
+        executeBatchWithRetry(stmtHistory, "bmsql_history");
         stmtHistory.clearBatch();
       }
     }
 
     if (!writeCSV){
       // Commit the WAREHOUSE, DISTRICT, STOCK, CUSTOMER and HISTORY rows.
-      commitWithRetry(stmtWarehouse, "bmsql_warehouse");
-      commitWithRetry(stmtDistrict, "bmsql_district");
-      commitWithRetry(stmtStock, "bmsql_stock");
-      commitWithRetry(stmtCustomer, "bmsql_customer");
-      commitWithRetry(stmtHistory, "bmsql_history");
+      // executeWithRetry(stmtWarehouse, "bmsql_warehouse");
+      // executeWithRetry(stmtDistrict, "bmsql_district");
+      // executeBatchWithRetry(stmtStock, "bmsql_stock");
+      // executeBatchWithRetry(stmtCustomer, "bmsql_customer");
+      // executeBatchWithRetry(stmtHistory, "bmsql_history");
     }
       // dbConn.commit();
   } // End loadWarehouse()
@@ -612,9 +635,9 @@ public class LoadDataWorker implements Runnable {
       // stmtOrderLine.clearBatch();
       // stmtNewOrder.executeBatch();
       // stmtNewOrder.clearBatch();
-      commitWithRetry(stmtOrder, "bmsql_oorder");
-      commitWithRetry(stmtOrderLine, "bmsql_order_line");
-      commitWithRetry(stmtNewOrder, "bmsql_new_order");
+      executeBatchWithRetry(stmtOrder, "bmsql_oorder");
+      executeBatchWithRetry(stmtOrderLine, "bmsql_order_line");
+      executeBatchWithRetry(stmtNewOrder, "bmsql_new_order");
       // stmtOrder.clearBatch();
       // stmtOrderLine.clearBatch();
       // stmtNewOrder.clearBatch();
@@ -622,9 +645,9 @@ public class LoadDataWorker implements Runnable {
 
     if (!writeCSV){
       // Commit the ORDER, ORDER_LINE and NEW_ORDER rows.
-      commitWithRetry(stmtOrder, "bmsql_oorder");
-      commitWithRetry(stmtOrderLine, "bmsql_order_line");
-      commitWithRetry(stmtNewOrder, "bmsql_new_order");
+      executeBatchWithRetry(stmtOrder, "bmsql_oorder");
+      executeBatchWithRetry(stmtOrderLine, "bmsql_order_line");
+      executeBatchWithRetry(stmtNewOrder, "bmsql_new_order");
     }
       // dbConn.commit();
   } // End loadOrder()
