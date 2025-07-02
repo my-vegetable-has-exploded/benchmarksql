@@ -1,4 +1,4 @@
-duration: 120s
-injectpods: $zone.random-storage-0
-loss: '20'
-template: net_loss.yaml
+fault.duration: 120s
+fault.injectpods: $zone.random-storage-0
+fault.loss: '20'
+fault.template: net_loss.yaml

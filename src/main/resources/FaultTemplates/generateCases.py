@@ -73,21 +73,21 @@ def generate_config_file(zone_type, role, pod_count, fault_type, duration, fault
     injectpods = generate_injectpods(zone_type, role, pod_count)
     fault_config = FAULT_TYPES[fault_type]
     config = {
-        "template": fault_config["template"],
-        "injectpods": injectpods,
-        "duration": f"{duration}s"
+        "fault.template": fault_config["template"],
+        "fault.injectpods": injectpods,
+        "fault.duration": f"{duration}s"
     }
 
     # 将io故障路径设置为对应role的路径， 如storage角色设置为storage.volumnPath
     if fault_type == "io_fault":
-        config["volumePath"] = "$" + role + ".volumePath"
+        config["fault.volumePath"] = "$" + role + ".volumePath"
 
     if fault_type == "cpu_stress":
-        config["workers"] = 2
+        config["fault.workers"] = 2
     
     # 添加故障类型特定的参数
     for param, value in fault_params.items():
-        config[param] = value
+        config["fault."+param] = value
     
     # 生成文件名
     file_name_parts = []

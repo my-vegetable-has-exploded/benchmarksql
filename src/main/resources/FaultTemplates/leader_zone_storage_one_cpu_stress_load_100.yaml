@@ -1,5 +1,5 @@
-duration: 120s
-injectpods: $zone.leader-storage-1
-load: 100
-template: cpu_stress.yaml
-workers: 2
+fault.duration: 120s
+fault.injectpods: $zone.leader-storage-1
+fault.load: 100
+fault.template: cpu_stress.yaml
+fault.workers: 2

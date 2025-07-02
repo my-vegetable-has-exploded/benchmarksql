@@ -1,4 +1,4 @@
-duration: 120s
-injectpods: $zone.leader-compute-0
-latency: 32ms
-template: net_delay.yaml
+fault.duration: 120s
+fault.injectpods: $zone.leader-compute-0
+fault.latency: 32ms
+fault.template: net_delay.yaml

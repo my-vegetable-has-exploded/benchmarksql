@@ -1,5 +1,5 @@
-duration: 120s
-injectpods: $zone.leader-storage-0
-percent: 50
-template: io_fault.yaml
-volumePath: $storage.volumePath
+fault.duration: 120s
+fault.injectpods: $zone.leader-storage-0
+fault.percent: 50
+fault.template: io_fault.yaml
+fault.volumePath: $storage.volumePath

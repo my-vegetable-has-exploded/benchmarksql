@@ -1,5 +1,5 @@
-duration: 120s
-injectpods: $zone.random-storage-1
-load: 50
-template: cpu_stress.yaml
-workers: 2
+fault.duration: 120s
+fault.injectpods: $zone.random-storage-1
+fault.load: 50
+fault.template: cpu_stress.yaml
+fault.workers: 2
