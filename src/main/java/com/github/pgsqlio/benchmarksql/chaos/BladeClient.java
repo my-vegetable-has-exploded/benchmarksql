@@ -12,8 +12,8 @@ public class BladeClient {
 
     public static void main(String[] args) {
         BladeClient client = new BladeClient();
-        String host = "133.133.135.157";
-        String resultId = client.executeCmd("create cpu load --cpu-percent 50", "133.133.135.157");
+        String host = "133.133.135.156";
+        String resultId = client.executeCmd("create cpu load --cpu-percent 50", host);
         if (resultId != null) {
             System.out.println("Command executed successfully, result ID: " + resultId);
             boolean destroyed = client.destory(resultId, host);

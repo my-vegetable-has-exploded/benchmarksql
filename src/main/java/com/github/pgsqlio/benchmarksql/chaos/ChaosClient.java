@@ -47,16 +47,17 @@ public class ChaosClient {
 		if (action.equals("process") || action.equals("disk-fill")) {
 			// currently chaosd can't handle process and disk-fill properly
 			// so we use chaosblade agent to inject these faults
-			inject_by_agent(faultDesc);
+			inject_by_agent(faultDesc, fault.file);
 		} else {
 			inject_by_server(fault.k8scli, fault.file, fault.duration);
 		}
 	}
 
 	// inject fault by calling chaosblade agent at corresponding node
-	public void inject_by_agent(HashMap<String, Object> faultDesc) throws Exception {
+	public void inject_by_agent(HashMap<String, Object> faultDesc, String faultFile) throws Exception {
 		Connection conn = null;
 		ArrayList<String> fault_ids = new ArrayList<>();
+
 		try {
 			Class.forName("org.sqlite.JDBC");
 			// connect to sqlite database
@@ -67,10 +68,11 @@ public class ChaosClient {
 			conn.createStatement().execute(createTableSQL);
 			// get the duration from faultDesc
 			HashMap<String, Object> spec = (HashMap<String, Object>) faultDesc.get("spec");
-			int duration = ChaosInjecter.durationParse((String) spec.get("duration"));
+			final int duration = ChaosInjecter.durationParse((String) spec.get("duration"));
 
 			// get action from faultDesc
 			String action = (String) spec.get("action");
+            final long startTime = System.currentTimeMillis();
 			switch (action) {
 				case "process":
 					fault_ids.addAll(inject_by_agent_process(spec, conn));
@@ -91,7 +93,7 @@ public class ChaosClient {
 							// wait for injection to take effect
 							Thread.sleep(10000);
 						}
-						destory_faults(fault_ids);
+						destory_faults(fault_ids, faultFile,  startTime, duration);
 					} catch (Exception e) {
 						logger.error("Error in destory_faults: " + e.getMessage());
 					}
@@ -112,7 +114,7 @@ public class ChaosClient {
 		}
 	}
 
-	public void destory_faults(ArrayList<String> fault_ids) {
+	public void destory_faults(ArrayList<String> fault_ids, String faultFile, long startTime, int duration) {
 		Connection conn = null;
 		try {
 			Class.forName("org.sqlite.JDBC");
@@ -129,7 +131,9 @@ public class ChaosClient {
 					logger.info("Destroy fault " + fault_id + " on " + host);
 					// delete the record from history table
 					conn.createStatement().execute("DELETE FROM inject_history WHERE id = '" + fault_id + "';");
-					conn.commit();
+					// conn.commit();
+                    jTPCC.csv_fault_write(faultFile + "," + startTime + "," + System.currentTimeMillis() + "," + duration + "\n");
+					jTPCC.copyFaultFile(faultFile);
 				} else {
 					logger.error("Failed to destroy fault " + fault_id + " on " + host);
 				}
@@ -163,14 +167,14 @@ public class ChaosClient {
 			ArrayList<String> results = new ArrayList<>();
 			BladeClient bladeClient = new BladeClient();
 			for (Component component : components) {
-				String res = bladeClient.executeCmd("create process kill --process " + component.process,
+				String res = bladeClient.executeCmd("create process kill --process " + component.process + " --signal 9",
 						component.host);
 				if (res != null) {
 					results.add(res);
 					conn.createStatement()
 							.execute("INSERT INTO inject_history (id, host) VALUES ('" + res + "', '" + component.host
 									+ "');");
-					conn.commit();
+					// conn.commit();
 				} else {
 					logger.error(
 							"Failed to execute command on " + component.host + " for process " + component.process);
@@ -183,6 +187,13 @@ public class ChaosClient {
 		}
 	}
 
+    public static String extractIP(String address) {
+        // extract the IP address from httpserver address
+        // for example , extract  http://133.133.135.156:31767 from http://133.133.135.156:31767
+        String ip = address.replaceAll("http://|https://|:[0-9]+", "");
+        return ip;
+    }
+
 	public ArrayList<String> inject_by_agent_disk_fill(HashMap<String, Object> spec, Connection conn) {
 		try {
 			// get the hosts and path from spec
@@ -194,12 +205,12 @@ public class ChaosClient {
 			BladeClient bladeClient = new BladeClient();
 			for (String host : hostList) {
 				String res = bladeClient.executeCmd("create disk fill --path " + volumePath + " --reserve 0",
-						host);
+						extractIP(host));
 				if (res != null) {
 					results.add(res);
 					conn.createStatement()
-							.execute("INSERT INTO inject_history (id, host) VALUES ('" + res + "', '" + host + "');");
-					conn.commit();
+							.execute("INSERT INTO inject_history (id, host) VALUES ('" + res + "', '" + extractIP(host) + "');");
+					// conn.commit();
 				} else {
 					logger.error(
 							"Failed to execute command on " + host + " for disk fill operation " + volumePath);
