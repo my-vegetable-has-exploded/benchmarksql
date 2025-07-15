@@ -17,6 +17,7 @@ import shlex
 import jproperties
 import queue
 import yaml
+import sqlite3
 
 class BenchmarkSQL:
     """
@@ -523,8 +524,8 @@ class BenchmarkSQL:
                 'name':     "result_{0:06d}".format(run_id),
                 'start':    time.asctime(),
                 'state':    'ALLRUNNING',
-				'start_run_id': run_id+1,
-				'end_run_id': 0,
+				        'start_run_id': run_id+1,
+				        'end_run_id': 0,
             }] + self.status_data['results']
         self.save_status()
 
@@ -600,6 +601,32 @@ class RunBenchmark(threading.Thread):
             fd.write("resultDirectory={0}\n".format(result_dir))
         with open(os.path.join(self.bench.data_dir, 'run_seq.dat'), 'w') as fd:
             fd.write(str(self.run_id - 1) + '\n')
+          
+        # init sqlite connection
+        self.db_conn = sqlite3.connect(os.path.join(self.bench.data_dir, 'benchmark.db'))
+        # create a table to store batch_id and run_id
+        cursor = self.db_conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS batch_runs (
+                run_id INTEGER PRIMARY KEY,
+                batch_id INTEGER
+                )''')
+        # store batch_id and  run_id into batch_runs
+        cursor.execute('INSERT INTO batch_runs (run_id, batch_id) VALUES (?, ?)', (self.run_id, self.run_id))
+        # create table metric, columns are run_id(int), data_loss_seconds(float), interrupt_time_seconds(float), stablity(float), dbtype(string), fault_type(string), scope(string), role(string), num(int)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS metrics (
+                run_id INTEGER PRIMARY KEY,
+                data_loss_seconds REAL,
+                interrupt_time_seconds REAL,
+                stability REAL,
+                dbtype TEXT,
+                fault_type TEXT,
+                scope TEXT,
+                role TEXT,
+                num INTEGER
+            )''')   
+        self.db_conn.commit()
 
         cmd = ['./runBenchmark.sh', run_props, ]
         self.proc = subprocess.Popen(cmd,
@@ -672,17 +699,42 @@ class RunAllFaults(threading.Thread):
         threading.Thread.__init__(self)
 
         self.bench = bench
-        self.init_run_id = run_id
+        self.batch_id = run_id
         self.run_id = run_id + 1
         self.start_run_id = run_id + 1
         self.end_run_id = 0
         self.proc = None
+                
 
     def run(self):
         self.bench.current_job_type = 'RUNALL'
-        self.bench.current_job_id = self.init_run_id 
-        self.bench.current_job_name = "result_{0:06d}".format(self.init_run_id)
+        self.bench.current_job_id = self.batch_id 
+        self.bench.current_job_name = "result_{0:06d}".format(self.batch_id)
         self.bench.save_status()
+
+                # init sqlite connection
+        self.db_conn = sqlite3.connect(os.path.join(self.bench.data_dir, 'benchmark.db'))
+        # create a table to store batch_id and run_id
+        cursor = self.db_conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS batch_runs (
+                run_id INTEGER PRIMARY KEY,
+                batch_id INTEGER
+                )''')
+        # create table metric, columns are run_id(int), data_loss_seconds(float), interrupt_time_seconds(float), stablity(float), dbtype(string), fault_type(string), scope(string), role(string), num(int)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS metrics (
+                run_id INTEGER PRIMARY KEY,
+                data_loss_seconds REAL,
+                interrupt_time_seconds REAL,
+                stablity REAL,
+                dbtype TEXT,
+                fault_type TEXT,
+                scope TEXT,
+                role TEXT,
+                num INTEGER
+            )''')   
+        self.db_conn.close()
   
         fault_files = [f for f in os.listdir(self.bench.faults_dis) if os.path.isfile(os.path.join(self.bench.faults_dis, f))]
         for fault_file in fault_files:
@@ -716,7 +768,7 @@ class RunAllFaults(threading.Thread):
         # change current job state to ALLFINISHED
         self.bench.lock.acquire()
         for entry in self.bench.status_data['results']:
-            if entry['run_id'] == self.init_run_id:
+            if entry['run_id'] == self.batch_id:
                 entry['state'] = 'ALLFINISHED'
                 entry['start_run_id'] = self.start_run_id
                 entry['end_run_id'] = self.end_run_id
@@ -738,8 +790,13 @@ class RunAllFaults(threading.Thread):
         last_props = os.path.join(self.bench.data_dir, 'last.properties')
         run_props = os.path.join(self.bench.data_dir, 'run.properties')
         result_dir = os.path.join(self.bench.data_dir, "result_{0:06d}".format(self.run_id))
+        
+        # store batch_id and  run_id into batch_runs
+        cursor = self.db_conn.cursor()
+        cursor.execute('INSERT INTO batch_runs (run_id, batch_id) VALUES (?, ?)', (self.run_id, self.batch_id))
+        self.db_conn.commit()
 
-		# clear result_dir if exists
+        # clear result_dir if exists
         if os.path.exists(result_dir):
             shutil.rmtree(result_dir)
         # os.makedirs(result_dir)

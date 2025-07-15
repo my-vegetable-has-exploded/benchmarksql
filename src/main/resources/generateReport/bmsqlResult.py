@@ -8,6 +8,7 @@ import duckdb
 import pymser
 import yaml
 from scipy.signal import savgol_filter
+import sqlite3
 
 class bmsqlResult:
     def __init__(self, resdir):
@@ -22,10 +23,22 @@ class bmsqlResult:
                 'STOCK_LEVEL',
                 'DELIVERY',
                 'DELIVERY_BG',
-				'STORE',
+				        'STORE',
             ]
         self.resdir = resdir
         self.datadir = os.path.join(resdir, 'data')
+
+        # connect to the sqlite3 database at service_data
+        self.conn = sqlite3.connect('service_data/benchmark.db')
+        # select max(run_id) from batch_runs  as runid
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT MAX(run_id) FROM batch_runs")
+        row = cursor.fetchone()
+        if row is None or row[0] is None:
+            raise ValueError("No run_id found in batch_runs table")
+        self.run_id = row[0]
+        cursor.close()
+        
 
         # ----
         # Load the run info into a dict
@@ -62,13 +75,24 @@ class bmsqlResult:
         self.rto = self.rto(self.trace_fname)
         self.rpo = self.rpo(self.trace_fname, txn_fname)
         self.steady_metrics = self.steady_metrics()
-
+        
         # write rto and rpo result into metrics.csv
         metrics_fname = os.path.join(self.datadir, 'metrics.csv')
         with open(metrics_fname, 'w', newline='') as fd:
             wrt = csv.writer(fd)
-            wrt.writerow(['rto', 'rpo', 'recovery_time_factor', 'total_performance_factor', 'absorption_factor', 'recovery_factor'])
-            wrt.writerow([self.rto, self.rpo, self.steady_metrics[-1]['recovery_time_factor'], self.steady_metrics[-1]['total_performance_factor'], self.steady_metrics[-1]['absorption_factor'], self.steady_metrics[-1]['recovery_factor']])
+            wrt.writerow(['rto', 'rpo', 'stability','recovery_time', 'recovery_time_factor', 'total_performance_factor', 'absorption_factor', 'recovery_factor'])
+            wrt.writerow([self.rto, self.rpo, self.steady_metrics[-1]['stability'], self.steady_metrics[-1]['recovery_time'], self.steady_metrics[-1]['recovery_time_factor'], self.steady_metrics[-1]['total_performance_factor'], self.steady_metrics[-1]['absorption_factor'], self.steady_metrics[-1]['recovery_factor']])
+
+        #insert the data_loss_seconds(rpo),  interrupt_time_seconds(rto), stablity(stablity) into table metrics where run_id = self.run_id
+        cursor = self.conn.cursor()
+        cursor.execute("""
+                        UPDATE metrics
+                        SET data_loss_seconds = ?, interrupt_time_seconds = ?, stability = ?
+                        WHERE run_id = ?;
+                        """, (self.rpo, self.rto, self.steady_metrics[-1]['stability'], self.run_id))
+        
+        self.conn.commit()
+        cursor.close()
 
         # self.stage_latency()
         # self.stage_throughput()
@@ -487,6 +511,7 @@ class bmsqlResult:
             'start_time': fault_start,
             'end_time': period_end,
         }
+        fault_duration = period_end - fault_start
 
         original_txn_stat = txn_stat
 
@@ -575,13 +600,16 @@ class bmsqlResult:
 
 
         recovery_time = minn
-        steady_metric['recovery_time_factor'] = minn
+        steady_metric['recovery_time'] = minn
+        recovery_time_factor = recovery_time / fault_duration 
+        steady_metric['recovery_time_factor'] = recovery_time / fault_duration
 
 
         # avaerage performance in later 1min or all time if recovery time is less than 1min
         performance_recovery = sum(original_txn_stat[fault_start+recovery_time: min(fault_start+recovery_time+60, period_end)])/ min(60, period_end - fault_start - recovery_time)
         recovery_factor = performance_recovery / performance_desired
         steady_metric['recovery_factor'] = min(recovery_factor, 1.0)
+        total_performance_factor , absorption_factor = 0.0, 0.0
 
         if recovery_time != 0:
             total_performance = sum(original_txn_stat[fault_start:period_end])/ (period_end - fault_start)
@@ -592,6 +620,24 @@ class bmsqlResult:
         else:
             steady_metric['total_performance_factor'] = min(recovery_factor, 1)
             steady_metric['absorption_factor'] = min(recovery_factor, 1)
+            total_performance_factor = min(recovery_factor, 1)
+            absorption_factor = min(recovery_factor, 1)
+        
+        total_performance_factor = min(float(total_performance_factor), 1)
+        recovery_factor = min(float(recovery_factor), 1)
+        absorption_factor = float(absorption_factor)
+        recovery_time_factor = float(recovery_time_factor)
+
+
+        exponent = max(recovery_factor - absorption_factor, 0)
+        if recovery_time_factor == 0 and exponent == 0:
+            power_result = 0
+        else:
+            power_result = pow(recovery_time_factor, exponent)
+
+        stability = total_performance_factor * recovery_factor * (absorption_factor + 1 - power_result)
+
+        steady_metric['stability'] = stability
         
         print(f"Steady state metrics: {steady_metric}")
         return steady_metric

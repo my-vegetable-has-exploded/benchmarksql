@@ -22,7 +22,6 @@ import java.util.regex.Pattern;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.yaml.snakeyaml.Yaml;
-
 import com.github.pgsqlio.benchmarksql.application.AppCRDB;
 import com.github.pgsqlio.benchmarksql.application.AppGeneric;
 import com.github.pgsqlio.benchmarksql.application.oracle.AppOracleStoredProc;
@@ -91,6 +90,7 @@ public class jTPCC {
   public jTPCCMonkey monkeys;
 
   public SystemConfig sysConfig;
+  public Connection sqliteConn;
   PerformConfig performConfig;
 
   public static String resultDirectory = null;
@@ -156,6 +156,27 @@ public class jTPCC {
     return faultInfoMap;
   }
 
+  HashMap<String, Object> detailedFaultInfo(HashMap<String, Object> yamlMap) {
+    HashMap<String, Object> detailFaultInfo = new HashMap<String, Object>();
+    String fault_type = yamlMap.get("template").toString();
+    // remove .yaml tail
+    fault_type = fault_type.substring(0, fault_type.length() - 5);
+    log.info("main, fault type={}", fault_type);
+    // get $zone.leader-compute-0 and remove $
+    String fault_scope = yamlMap.get("injectpods").toString().substring(1);
+    // split fault_scope by - and get scope 、role and num
+    String[] scopeParts = fault_scope.split("-");
+    String scope = scopeParts[0].substring(5); // remove "zone."
+    String role = scopeParts[1];
+    int num = Integer.parseInt(scopeParts[2]);
+    log.info("main, fault scope={}, role={}, num={}", scope, role, num);
+    detailFaultInfo.put("fault_type", fault_type);
+    detailFaultInfo.put("scope", scope);
+    detailFaultInfo.put("role", role);
+    detailFaultInfo.put("num", num);
+    return detailFaultInfo;
+  }
+
   public jTPCC() throws FileNotFoundException {
     StringBuilder sb = new StringBuilder();
     Formatter fmt = new Formatter(sb);
@@ -184,6 +205,22 @@ public class jTPCC {
       throw new IllegalArgumentException("Invalid property arguments: " + propStr);
     }
 
+    try {
+      Class.forName("org.sqlite.JDBC");
+      this.sqliteConn = DriverManager.getConnection("jdbc:sqlite:service_data/benchmark.db");
+      //  select max runID from batch_runs table
+      PreparedStatement stmt = this.sqliteConn.prepareStatement("SELECT MAX(run_id) AS max_runID FROM batch_runs");
+      ResultSet rs = stmt.executeQuery();
+      if (rs.next()) {
+        runID = rs.getInt("max_runID") ;
+        log.info("main, runID from sqlite database: {}", runID);
+      }
+    } catch (Exception e) {
+      log.error("main, could not connect to sqlite database: {}", e.getMessage()); 
+      System.exit(1);
+    }
+
+    HashMap<String, Object> faultInfo = null;
 	// check if the fault is available
 	try {
       ChaosInjecter injecter = ChaosInjecter.getInstance(this);
@@ -194,12 +231,29 @@ public class jTPCC {
         HashMap<String, Object> allParamsMap = yaml.load(faultTemplate);
         performConfig.updatePerformConfigWithYamlMap(allParamsMap);
         HashMap<String, Object> faultInfoMap = getFaultInfoMap(allParamsMap);
+        faultInfo = detailedFaultInfo(faultInfoMap );
         injecter.initialFaultWithCombinedConfig(sysConfig, fault, faultInfoMap);
       }
     } catch (Exception e) {
       log.error("main, could not init fault file, " + e.getMessage());
       // Don't exit this case, exit with error code
       System.exit(1);
+    }
+    
+    // insert into sqlite table metrics , run_id(runID), dbtype(iDBType), fault_type(faultInfo.get("fault_type")), scope(faultInfo.get("scope")), role(faultInfo.get("role")), num(faultInfo.get("num"), int)
+    try {
+      PreparedStatement stmt = this.sqliteConn.prepareStatement(
+          "INSERT INTO metrics (run_id, dbtype, fault_type, scope, role, num) VALUES (?, ?, ?, ?, ?, ?)");
+      stmt.setInt(1, runID);
+      stmt.setString(2, getSysVal("db"));
+      stmt.setString(3, faultInfo.get("fault_type").toString());
+      stmt.setString(4, faultInfo.get("scope").toString());
+      stmt.setString(5, faultInfo.get("role").toString());
+      stmt.setInt(6, (Integer) faultInfo.get("num"));
+      stmt.executeUpdate();
+      this.sqliteConn.commit();
+    } catch (Exception e) {
+      log.error("main, could not insert metrics into sqlite database: {}", e.getMessage());
     }
 
     /*
@@ -394,12 +448,12 @@ public class jTPCC {
       Pattern p = Pattern.compile("%t");
       Calendar cal = Calendar.getInstance();
 
-      String iRunID;
+      // String iRunID;
 
-      iRunID = System.getProperty("runID");
-      if (iRunID != null) {
-        runID = Integer.parseInt(iRunID);
-      }
+      // iRunID = System.getProperty("runID");
+      // if (iRunID != null) {
+      //   runID = Integer.parseInt(iRunID);
+      // }
 
       /*
        * Split the resultDirectory into strings around patterns of %t and then insert date/time
