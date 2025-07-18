@@ -132,13 +132,13 @@ public class PerformConfig {
         if (yamlMap.containsKey("isSkewed")) {
             isSkewed = Boolean.parseBoolean(getValFromYamlMap(yamlMap, "isSkewed"));
         }
-        if( yamlMap.containsKey("seed")) {
+        if( yamlMap.containsKey("skew.seed")) {
             seed = Long.parseLong(getValFromYamlMap(yamlMap, "skew.seed"));
         }
-        if( yamlMap.containsKey("alphaData")) {
+        if( yamlMap.containsKey("skew.alphaData")) {
             alphaData = Double.parseDouble(getValFromYamlMap(yamlMap, "skew.alphaData"));
         }
-        if( yamlMap.containsKey("alphaTxn")) {
+        if( yamlMap.containsKey("skew.alphaTxn")) {
             alphaTxn = Double.parseDouble(getValFromYamlMap(yamlMap, "skew.alphaTxn"));
         }
         if( yamlMap.containsKey("updateInterval")) {
@@ -241,13 +241,13 @@ public class PerformConfig {
         if( p.containsKey("seed")) {
             seed = Long.parseLong(getProp(p, "skew.seed"));
         }
-        if( p.containsKey("alphaData")) {
+        if( p.containsKey("skew.alphaData")) {
             alphaData = Double.parseDouble(getProp(p, "skew.alphaData"));
         }
-        if( p.containsKey("alphaTxn")) {
+        if( p.containsKey("skew.alphaTxn")) {
             alphaTxn = Double.parseDouble(getProp(p, "skew.alphaTxn"));
         }
-        if( p.containsKey("updateInterval")) {
+        if( p.containsKey("skew.updateInterval")) {
             updateInterval = Long.parseLong(getProp(p, "skew.updateInterval"));
         }
         if (p.containsKey("distributedRatio")) {
