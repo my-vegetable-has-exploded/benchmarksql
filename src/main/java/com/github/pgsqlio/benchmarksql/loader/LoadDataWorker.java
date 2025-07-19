@@ -374,9 +374,9 @@ public class LoadDataWorker implements Runnable {
       /*
        * Load the data in batches of 10,000 rows.
        */
-      if (s_i_id != 1 && (s_i_id - 1) % 10000 == 0) {
+      if (s_i_id % 1000 == 0) {
         if (writeCSV)
-          LoadData.warehouseAppend(sbWarehouse);
+          LoadData.stockAppend(sbStock);
         else {
           // stmtStock.executeBatch();
           executeBatchWithRetry(stmtStock, "bmsql_stock");
@@ -541,14 +541,16 @@ public class LoadDataWorker implements Runnable {
     }
 
     if (!writeCSV){
-      // Commit the WAREHOUSE, DISTRICT, STOCK, CUSTOMER and HISTORY rows.
-      // executeWithRetry(stmtWarehouse, "bmsql_warehouse");
-      // executeWithRetry(stmtDistrict, "bmsql_district");
-      // executeBatchWithRetry(stmtStock, "bmsql_stock");
-      // executeBatchWithRetry(stmtCustomer, "bmsql_customer");
-      // executeBatchWithRetry(stmtHistory, "bmsql_history");
+      // Ensure all data is committed
+      try {
+        dbConn.commit();
+      } catch (SQLException se) {
+        fmt.format("Final commit ERROR: %s", se.getMessage());
+        log.error(sb.toString());
+        sb.setLength(0);
+        throw se;
+      }
     }
-      // dbConn.commit();
   } // End loadWarehouse()
 
   /*
