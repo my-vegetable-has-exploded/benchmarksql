@@ -180,6 +180,37 @@ public class jTPCC {
     detailFaultInfo.put("scope", scope);
     detailFaultInfo.put("role", role);
     detailFaultInfo.put("num", num);
+    
+    // Extract fault-specific parameters
+    StringBuilder faultParams = new StringBuilder();
+    if ("net_delay".equals(fault_type)) {
+      String latency = yamlMap.get("latency") != null ? yamlMap.get("latency").toString() : "None";
+      faultParams.append("latency:").append(latency);
+    } else if ("io_fault".equals(fault_type)) {
+      String percent = yamlMap.get("percent") != null ? yamlMap.get("percent").toString() : "None";
+      faultParams.append("percent:").append(percent);
+    } else if ("net_loss".equals(fault_type)) {
+      String loss = yamlMap.get("loss") != null ? yamlMap.get("loss").toString() : "None";
+      faultParams.append("loss:").append(loss);
+    } else if ("cpu_stress".equals(fault_type)) {
+      String load = yamlMap.get("load") != null ? yamlMap.get("load").toString() : "None";
+      faultParams.append("load:").append(load);
+    } else if ("fail".equals(fault_type)) {
+      faultParams.append("None");
+    } else {
+      // For other fault types, collect all parameters except template, injectpods, duration
+      for (String key : yamlMap.keySet()) {
+        if (!key.equals("template") && !key.equals("injectpods") && !key.equals("duration") && !key.equals("volumePath")) {
+          if (faultParams.length() > 0) faultParams.append(",");
+          faultParams.append(key).append(":").append(yamlMap.get(key).toString());
+        }
+      }
+      if (faultParams.length() == 0) {
+        faultParams.append("None");
+      }
+    }
+    detailFaultInfo.put("fault_params", faultParams.toString());
+    
     return detailFaultInfo;
   }
 
@@ -246,22 +277,6 @@ public class jTPCC {
       System.exit(1);
     }
     
-    // insert into sqlite table metrics , run_id(runID), dbtype(iDBType), fault_type(faultInfo.get("fault_type")), scope(faultInfo.get("scope")), role(faultInfo.get("role")), num(faultInfo.get("num"), int)
-    try {
-      PreparedStatement stmt = this.sqliteConn.prepareStatement(
-          "INSERT INTO metrics (run_id, dbtype, fault_type, scope, role, num) VALUES (?, ?, ?, ?, ?, ?)");
-      stmt.setInt(1, runID);
-      stmt.setString(2, getSysVal("db"));
-      stmt.setString(3, faultInfo.get("fault_type").toString());
-      stmt.setString(4, faultInfo.get("scope").toString());
-      stmt.setString(5, faultInfo.get("role").toString());
-      stmt.setInt(6, (Integer) faultInfo.get("num"));
-      stmt.executeUpdate();
-      this.sqliteConn.commit();
-    } catch (Exception e) {
-      log.error("main, could not insert metrics into sqlite database: {}", e.getMessage());
-    }
-
     /*
      * Get all the configuration settings
      */
@@ -336,6 +351,42 @@ public class jTPCC {
 
     rollbackPercent = performConfig.rollbackPercent;
     log.info("main, ");
+
+    // insert into sqlite table metrics with all the extended information
+    try {
+      PreparedStatement stmt = this.sqliteConn.prepareStatement(
+          "INSERT INTO metrics (run_id, dbtype, fault_type, scope, role, num, fault_params, " +
+          "warehouses, new_order_weight, payment_weight, order_status_weight, delivery_weight, " +
+          "stock_level_weight, store_weight, alpha_data, alpha_txn, distributed_ratio, distributed_nodes) " +
+          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+      stmt.setInt(1, runID);
+      stmt.setString(2, getSysVal("db"));
+      stmt.setString(3, faultInfo != null ? faultInfo.get("fault_type").toString() : "None");
+      stmt.setString(4, faultInfo != null ? faultInfo.get("scope").toString() : "None");
+      stmt.setString(5, faultInfo != null ? faultInfo.get("role").toString() : "None");
+      stmt.setInt(6, faultInfo != null ? (Integer) faultInfo.get("num") : 0);
+      stmt.setString(7, faultInfo != null ? faultInfo.get("fault_params").toString() : "None");
+      stmt.setInt(8, numWarehouses);
+      
+      // Set transaction weights
+      stmt.setDouble(9, newOrderWeight);
+      stmt.setDouble(10, paymentWeight);
+      stmt.setDouble(11, orderStatusWeight); 
+      stmt.setDouble(12, deliveryWeight);
+      stmt.setDouble(13, stockLevelWeight);
+      stmt.setDouble(14, storeWeight);
+      
+      // Set skew and distributed parameters
+      stmt.setDouble(15, isSkewed ? performConfig.alphaData : -1.0);
+      stmt.setDouble(16, isSkewed ? performConfig.alphaTxn : -1.0); 
+      stmt.setDouble(17, distributedRatio);
+      stmt.setInt(18, distributedNodes);
+      
+      stmt.executeUpdate();
+      this.sqliteConn.commit();
+    } catch (Exception e) {
+      log.error("main, could not insert metrics into sqlite database: {}", e.getMessage());
+    }
 
     numTerms = 10 * terminalMultiplier;
     sutThreadDelay = (rampupSUTMins * 60000) / numSUTThreads;
