@@ -162,7 +162,7 @@ public class jTPCC {
     return faultInfoMap;
   }
 
-  HashMap<String, Object> detailedFaultInfo(HashMap<String, Object> yamlMap) {
+  HashMap<String, Object> detailedFaultInfo(HashMap<String, Object> yamlMap, String faultFileName) {
     HashMap<String, Object> detailFaultInfo = new HashMap<String, Object>();
     String fault_type = yamlMap.get("template").toString();
     // remove .yaml tail
@@ -180,6 +180,7 @@ public class jTPCC {
     detailFaultInfo.put("scope", scope);
     detailFaultInfo.put("role", role);
     detailFaultInfo.put("num", num);
+    detailFaultInfo.put("fault_filename", faultFileName);
     
     // Extract fault-specific parameters
     StringBuilder faultParams = new StringBuilder();
@@ -268,7 +269,7 @@ public class jTPCC {
         HashMap<String, Object> allParamsMap = yaml.load(faultTemplate);
         performConfig.updatePerformConfigWithYamlMap(allParamsMap);
         HashMap<String, Object> faultInfoMap = getFaultInfoMap(allParamsMap);
-        faultInfo = detailedFaultInfo(faultInfoMap );
+        faultInfo = detailedFaultInfo(faultInfoMap, fault);
         injecter.initialFaultWithCombinedConfig(sysConfig, fault, faultInfoMap);
       }
     } catch (Exception e) {
@@ -355,32 +356,33 @@ public class jTPCC {
     // insert into sqlite table metrics with all the extended information
     try {
       PreparedStatement stmt = this.sqliteConn.prepareStatement(
-          "INSERT INTO metrics (run_id, dbtype, fault_type, scope, role, num, fault_params, " +
+          "INSERT INTO metrics (run_id, dbtype, fault_filename, fault_type, scope, role, num, fault_params, " +
           "warehouses, new_order_weight, payment_weight, order_status_weight, delivery_weight, " +
           "stock_level_weight, store_weight, alpha_data, alpha_txn, distributed_ratio, distributed_nodes) " +
-          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
       stmt.setInt(1, runID);
       stmt.setString(2, getSysVal("db"));
-      stmt.setString(3, faultInfo != null ? faultInfo.get("fault_type").toString() : "None");
-      stmt.setString(4, faultInfo != null ? faultInfo.get("scope").toString() : "None");
-      stmt.setString(5, faultInfo != null ? faultInfo.get("role").toString() : "None");
-      stmt.setInt(6, faultInfo != null ? (Integer) faultInfo.get("num") : 0);
-      stmt.setString(7, faultInfo != null ? faultInfo.get("fault_params").toString() : "None");
-      stmt.setInt(8, numWarehouses);
+      stmt.setString(3, faultInfo != null ? faultInfo.get("fault_filename").toString() : "None");
+      stmt.setString(4, faultInfo != null ? faultInfo.get("fault_type").toString() : "None");
+      stmt.setString(5, faultInfo != null ? faultInfo.get("scope").toString() : "None");
+      stmt.setString(6, faultInfo != null ? faultInfo.get("role").toString() : "None");
+      stmt.setInt(7, faultInfo != null ? (Integer) faultInfo.get("num") : 0);
+      stmt.setString(8, faultInfo != null ? faultInfo.get("fault_params").toString() : "None");
+      stmt.setInt(9, numWarehouses);
       
       // Set transaction weights
-      stmt.setDouble(9, newOrderWeight);
-      stmt.setDouble(10, paymentWeight);
-      stmt.setDouble(11, orderStatusWeight); 
-      stmt.setDouble(12, deliveryWeight);
-      stmt.setDouble(13, stockLevelWeight);
-      stmt.setDouble(14, storeWeight);
+      stmt.setDouble(10, newOrderWeight);
+      stmt.setDouble(11, paymentWeight);
+      stmt.setDouble(12, orderStatusWeight); 
+      stmt.setDouble(13, deliveryWeight);
+      stmt.setDouble(14, stockLevelWeight);
+      stmt.setDouble(15, storeWeight);
       
       // Set skew and distributed parameters
-      stmt.setDouble(15, isSkewed ? performConfig.alphaData : -1.0);
-      stmt.setDouble(16, isSkewed ? performConfig.alphaTxn : -1.0); 
-      stmt.setDouble(17, distributedRatio);
-      stmt.setInt(18, distributedNodes);
+      stmt.setDouble(16, isSkewed ? performConfig.alphaData : -1.0);
+      stmt.setDouble(17, isSkewed ? performConfig.alphaTxn : -1.0); 
+      stmt.setDouble(18, distributedRatio);
+      stmt.setInt(19, distributedNodes);
       
       stmt.executeUpdate();
       this.sqliteConn.commit();

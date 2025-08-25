@@ -613,7 +613,7 @@ class RunBenchmark(threading.Thread):
                 )''')
         # store batch_id and  run_id into batch_runs
         cursor.execute('INSERT INTO batch_runs (run_id, batch_id) VALUES (?, ?)', (self.run_id, self.run_id))
-        # create table metric, columns are run_id(int), data_loss_seconds(float), interrupt_time_seconds(float), stability(float), dbtype(string), fault_type(string), scope(string), role(string), num(int), fault_params(text), warehouses(int), new_order_weight(real), payment_weight(real), order_status_weight(real), delivery_weight(real), stock_level_weight(real), store_weight(real), alpha_data(real), alpha_txn(real), distributed_ratio(real), distributed_nodes(int)
+        # create table metric, columns are run_id(int), data_loss_seconds(float), interrupt_time_seconds(float), stability(float), dbtype(string), fault_filename(text), fault_type(string), scope(string), role(string), num(int), fault_params(text), warehouses(int), new_order_weight(real), payment_weight(real), order_status_weight(real), delivery_weight(real), stock_level_weight(real), store_weight(real), alpha_data(real), alpha_txn(real), distributed_ratio(real), distributed_nodes(int)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS metrics (
                 run_id INTEGER PRIMARY KEY,
@@ -621,6 +621,7 @@ class RunBenchmark(threading.Thread):
                 interrupt_time_seconds REAL,
                 stability REAL,
                 dbtype TEXT,
+                fault_filename TEXT,
                 fault_type TEXT,
                 scope TEXT,
                 role TEXT,
@@ -733,7 +734,7 @@ class RunAllFaults(threading.Thread):
                 run_id INTEGER PRIMARY KEY,
                 batch_id INTEGER
                 )''')
-        # create table metric, columns are run_id(int), data_loss_seconds(float), interrupt_time_seconds(float), stability(float), dbtype(string), fault_type(string), scope(string), role(string), num(int), fault_params(text), warehouses(int), new_order_weight(real), payment_weight(real), order_status_weight(real), delivery_weight(real), stock_level_weight(real), store_weight(real), alpha_data(real), alpha_txn(real), distributed_ratio(real), distributed_nodes(int)
+        # create table metric, columns are run_id(int), data_loss_seconds(float), interrupt_time_seconds(float), stability(float), dbtype(string), fault_filename(text), fault_type(string), scope(string), role(string), num(int), fault_params(text), warehouses(int), new_order_weight(real), payment_weight(real), order_status_weight(real), delivery_weight(real), stock_level_weight(real), store_weight(real), alpha_data(real), alpha_txn(real), distributed_ratio(real), distributed_nodes(int)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS metrics (
                 run_id INTEGER PRIMARY KEY,
@@ -741,6 +742,7 @@ class RunAllFaults(threading.Thread):
                 interrupt_time_seconds REAL,
                 stability REAL,
                 dbtype TEXT,
+                fault_filename TEXT,
                 fault_type TEXT,
                 scope TEXT,
                 role TEXT,
