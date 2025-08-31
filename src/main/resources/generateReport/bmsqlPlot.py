@@ -67,7 +67,7 @@ class bmsqlPlot:
         steady_metrics = result.steady_metrics
         for steady_metric in steady_metrics:
             fault_time = steady_metric['start_time']
-            plt.axvspan(fault_time- warmupseconds, fault_time + max(steady_metric['recovery_time_factor'], 1)- warmupseconds, facecolor = 'r', alpha = 0.2)
+            plt.axvspan(fault_time- warmupseconds, fault_time + max(steady_metric['recovery_time'], 1)- warmupseconds, facecolor = 'r', alpha = 0.2)
 
         # plot flitered data
         flitered = savgol_filter(txn_stat, 11, 3)
